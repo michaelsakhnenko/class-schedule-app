@@ -2,6 +2,8 @@
 
 A responsive, Apple Calendar-inspired class timetable with day, week, and month views. Desktop opens in week view; mobile opens in day view. The app reads a normalized snapshot of the real [IDEIS plan 1000](https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000).
 
+[Open the shared calendar](https://michaelsakhnenko.github.io/class-schedule-app/)
+
 The dark theme is the default. The sun/moon button switches to a warm light theme and saves the choice in browser storage.
 
 On desktop, the button at the top left hides or restores the sidebar. The calendar expands smoothly, and the sidebar choice is saved in browser storage.
@@ -29,6 +31,6 @@ On 3 October 2026, selecting **Cały semestr** and **Szukaj** on plan 1000 loade
 
 The included [workflow](.github/workflows/sync-schedule.yml) checks the source every two hours, commits a changed snapshot, and publishes the same run to GitHub Pages. A code push or manual run also builds and publishes the app. Scheduled runs skip deployment when the timetable is unchanged. The build automatically uses `/` for a `USERNAME.github.io` repository or `/<repository>/` for a project repository, including the `schedule.json` request.
 
-To turn it on, put this project in a GitHub repository and choose **Settings → Pages → Build and deployment → Source: GitHub Actions**. The first push to the default branch starts the workflow; the deployment URL appears in its `deploy` job. The workflow needs repository Actions enabled and permission to write contents and Pages deployments. If the source website blocks GitHub's runner, the sync job fails and leaves the last published snapshot in place.
+The public repository is [michaelsakhnenko/class-schedule-app](https://github.com/michaelsakhnenko/class-schedule-app), with Pages set to **GitHub Actions**. A successful first sync and deployment ran on GitHub's runner. Later code pushes and changed timetable snapshots publish through the same workflow. If the source website becomes unavailable, the sync job fails and leaves the last published snapshot in place.
 
 The plan contains common `W/3/ZS`, `cw/3/ZS`, and `konw/3/ZS` rows, plus four parallel English groups (`1 angPrad B1/3/ZS`, `2 angPrad B1+/3/ZS`, `4 angNow B2+/3/ZS`, and `5 angNow C1/3/ZS`). Each visitor selects their English group; it is saved in their browser. Until then, the app shows the common classes and leaves out parallel English classes.
