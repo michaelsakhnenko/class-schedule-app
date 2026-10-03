@@ -1,0 +1,90 @@
+name: Sync and publish class schedule
+
+on:
+  push:
+  schedule:
+    - cron: "7 */2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pages: read
+    outputs:
+      publish: ${{ steps.decision.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run sync:schedule
+      - name: Check whether the timetable changed
+        id: changes
+        run: |
+          git add public/schedule.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Commit updated timetable
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update class schedule"
+          git push
+      - name: Decide whether to publish
+        id: decision
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != "schedule" || "${{ steps.changes.outputs.changed }}" == "true" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set GitHub Pages path
+        if: steps.decision.outputs.publish == 'true'
+        run: |
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          owner_name="${GITHUB_REPOSITORY%%/*}"
+          if [[ "$repo_name" == "$owner_name.github.io" ]]; then
+            echo "GITHUB_PAGES_BASE=/" >> "$GITHUB_ENV"
+          else
+            echo "GITHUB_PAGES_BASE=/$repo_name/" >> "$GITHUB_ENV"
+          fi
+      - name: Build static site
+        if: steps.decision.outputs.publish == 'true'
+        run: npm run build
+      - uses: actions/configure-pages@v5
+        if: steps.decision.outputs.publish == 'true'
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.decision.outputs.publish == 'true'
+        with:
+          path: dist/client
+
+  deploy:
+    if: needs.build.outputs.publish == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

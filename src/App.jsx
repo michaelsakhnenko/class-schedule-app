@@ -1,0 +1,592 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import {
+  CalendarDots,
+  CaretLeft,
+  CaretRight,
+  Clock,
+  MapPin,
+  Moon,
+  SidebarSimple,
+  Sun,
+  User,
+  X,
+} from "@phosphor-icons/react";
+import { CLASS_TYPES, filterByLanguageGroup, formatLanguageGroup, getEventType, getEventTypeLabel, getLanguageGroups, getSchedule } from "./data/schedule.js";
+import {
+  addDays,
+  classCountLabel,
+  currentWarsawTime,
+  formatDateRange,
+  formatFullDate,
+  formatMonth,
+  formatShortDate,
+  formatWeekday,
+  isWeekend,
+  minutes,
+  monthDays,
+  parseDay,
+  startOfWeek,
+  todayISO,
+  toISO,
+  weekDays,
+} from "./lib/dates.js";
+
+const START_HOUR = 0;
+const END_HOUR = 24;
+const HOUR_HEIGHT = 78;
+const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
+const TYPE_ORDER = ["lecture", "exercise", "seminar", "other"];
+
+function shiftMonth(day, amount) {
+  const date = parseDay(day);
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + amount);
+  return toISO(date);
+}
+
+function shiftSelectedMonth(day, amount) {
+  const date = parseDay(day);
+  const originalDay = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + amount);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(originalDay, lastDay));
+  return toISO(date);
+}
+
+function layoutEvents(events) {
+  const sorted = [...events].sort((a, b) => minutes(a.startTime) - minutes(b.startTime) || minutes(b.endTime) - minutes(a.endTime));
+  const groups = [];
+  let current = [];
+  let currentEnd = -1;
+
+  for (const event of sorted) {
+    const start = minutes(event.startTime);
+    if (current.length && start >= currentEnd) {
+      groups.push(current);
+      current = [];
+      currentEnd = -1;
+    }
+    current.push(event);
+    currentEnd = Math.max(currentEnd, minutes(event.endTime));
+  }
+  if (current.length) groups.push(current);
+
+  return groups.flatMap((group) => {
+    const columnEnds = [];
+    const positions = group.map((event) => {
+      const start = minutes(event.startTime);
+      let column = columnEnds.findIndex((end) => end <= start);
+      if (column === -1) column = columnEnds.length;
+      columnEnds[column] = minutes(event.endTime);
+      return { event, column };
+    });
+    return positions.map(({ event, column }) => ({ event, column, columns: columnEnds.length }));
+  });
+}
+
+function MiniCalendar({ month, selectedDay, classDates, onSelect, onMonthChange }) {
+  const days = monthDays(month);
+  const monthNumber = parseDay(month).getUTCMonth();
+  const today = todayISO();
+
+  return (
+    <section className="mini-calendar" aria-label="Mały kalendarz">
+      <div className="mini-heading">
+        <span>{formatMonth(month)}</span>
+        <div className="mini-actions">
+          <button className="icon-button small" type="button" aria-label="Poprzedni miesiąc" onClick={() => onMonthChange(-1)}><CaretLeft size={16} /></button>
+          <button className="icon-button small" type="button" aria-label="Następny miesiąc" onClick={() => onMonthChange(1)}><CaretRight size={16} /></button>
+        </div>
+      </div>
+      <div className="mini-weekdays" aria-hidden="true">{["P", "W", "Ś", "C", "P", "S", "N"].map((label, index) => <span key={index}>{label}</span>)}</div>
+      <div className="mini-days">
+        {days.map((day) => (
+          <button
+            className={`mini-day date-circle${day === selectedDay ? " is-selected" : ""}${day === today ? " is-today" : ""}${parseDay(day).getUTCMonth() !== monthNumber ? " is-outside" : ""}`}
+            key={day}
+            type="button"
+            aria-label={formatFullDate(day)}
+            aria-current={day === today ? "date" : undefined}
+            aria-pressed={day === selectedDay}
+            onClick={() => onSelect(day)}
+          >
+            <span>{parseDay(day).getUTCDate()}</span>
+            {classDates.has(day) && <i className="mini-event-dot" aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GroupFilter({ groups, value, onChange, id }) {
+  if (!groups.length) return null;
+  return (
+    <label className="group-filter" htmlFor={id}>
+      <span>Grupa angielskiego</span>
+      <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Wybierz grupę</option>
+        {groups.map((group) => <option key={group} value={group}>{formatLanguageGroup(group)}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function Sidebar({ selectedDay, miniMonth, setMiniMonth, classDates, legendClasses, legendTypes, languageGroups, selectedGroup, onGroupChange, onSelectDay, collapsed }) {
+  const counts = legendTypes.map((type) => ({ type, count: legendClasses.filter((event) => getEventType(event) === type).length }));
+
+  return (
+    <aside id="schedule-sidebar" className="sidebar" aria-label="Panel boczny" aria-hidden={collapsed} inert={collapsed}>
+      <div className="sidebar-main">
+        <MiniCalendar
+          month={miniMonth}
+          selectedDay={selectedDay}
+          classDates={classDates}
+          onSelect={onSelectDay}
+          onMonthChange={(amount) => setMiniMonth((value) => shiftMonth(value, amount))}
+        />
+        {languageGroups.length > 0 && <div className="sidebar-group-filter"><GroupFilter groups={languageGroups} value={selectedGroup} onChange={onGroupChange} id="sidebar-language-group" /></div>}
+        {legendTypes.length > 0 && <section className="legend" aria-label="Kolory rodzajów zajęć">
+          <div className="sidebar-section-label">Rodzaje zajęć</div>
+          {counts.map(({ type, count }) => (
+            <div className="legend-row" key={type}>
+              <span className={`legend-swatch type-${type}`} />
+              <span>{CLASS_TYPES[type].label}</span>
+              <span className="legend-count">{count}</span>
+            </div>
+          ))}
+        </section>}
+      </div>
+    </aside>
+  );
+}
+
+function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick }) {
+  const days = useMemo(() => monthDays(selectedDay), [selectedDay]);
+  const currentMonth = selectedDay.slice(0, 7);
+  const today = todayISO();
+  const eventsByDay = useMemo(() => {
+    const result = new Map(days.map((day) => [day, []]));
+    events.forEach((event) => result.get(event.date)?.push(event));
+    result.forEach((dayEvents) => dayEvents.sort((a, b) => minutes(a.startTime) - minutes(b.startTime)));
+    return result;
+  }, [days, events]);
+  const selectedEvents = eventsByDay.get(selectedDay) ?? [];
+
+  return (
+    <div className="month-surface">
+      <div className="month-weekdays" aria-hidden="true">
+        {["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"].map((label) => <span key={label}><span className="month-weekday-long">{label}</span><span className="month-weekday-short">{label.slice(0, 1)}</span></span>)}
+      </div>
+      <div className="month-scroll">
+        <div className="month-cells" style={{ "--week-count": days.length / 7 }}>
+          {days.map((day) => {
+            const dayEvents = eventsByDay.get(day) ?? [];
+            return (
+              <div className={`month-cell${day.slice(0, 7) !== currentMonth ? " is-outside" : ""}${isWeekend(day) ? " is-weekend" : ""}${isMobile && day === selectedDay ? " is-selected" : ""}`} key={day}>
+                {isMobile
+                  ? <button className={`month-date date-circle${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}`} type="button" aria-label={formatFullDate(day)} aria-current={day === today ? "date" : undefined} aria-pressed={day === selectedDay} onClick={() => onSelectDay(day)}>{parseDay(day).getUTCDate()}</button>
+                  : <time className={`month-date is-static${day === today ? " is-today" : ""}`} dateTime={day} aria-current={day === today ? "date" : undefined}>{parseDay(day).getUTCDate()}</time>}
+                <div className="month-event-list">
+                  {dayEvents.slice(0, 3).map((event) => <button className={`month-event type-${getEventType(event)}`} type="button" key={event.id} aria-label={`${event.title}, ${getEventTypeLabel(event)}, ${event.startTime}`} onClick={() => onEventClick(event)}><span>{event.startTime}</span><strong>{event.title}</strong></button>)}
+                  {dayEvents.length > 3 && <span className="month-more">+{dayEvents.length - 3} więcej</span>}
+                </div>
+                <div className="month-dots" aria-hidden="true">{dayEvents.slice(0, 4).map((event) => <i className={`legend-swatch type-${getEventType(event)}`} key={event.id} />)}</div>
+              </div>
+            );
+          })}
+        </div>
+        <section className="month-agenda" aria-label={`Zajęcia: ${formatFullDate(selectedDay)}`}>
+          <h2>{formatFullDate(selectedDay)}</h2>
+          {selectedEvents.length ? selectedEvents.map((event) => <button className={`month-agenda-event type-${getEventType(event)}`} type="button" key={event.id} onClick={() => onEventClick(event)}><strong>{event.title}</strong><span className="month-agenda-time"><Clock size={14} aria-hidden="true" />{event.startTime}–{event.endTime}</span><small className="month-agenda-room"><MapPin size={14} aria-hidden="true" />{event.room}</small></button>) : <p>Brak zajęć w tym dniu</p>}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function EventCard({ event, column, columns, onClick }) {
+  const start = minutes(event.startTime);
+  const end = minutes(event.endTime);
+  const top = ((start - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+  const height = ((end - start) / 60) * HOUR_HEIGHT;
+  const width = 100 / columns;
+
+  return (
+    <button
+      className={`event-card type-${getEventType(event)}`}
+      type="button"
+      style={{ top: `${top + 4}px`, height: `${Math.max(height - 8, 48)}px`, left: `calc(${column * width}% + 4px)`, width: `calc(${width}% - 8px)` }}
+      aria-label={`${event.title}, ${event.startTime}–${event.endTime}, ${event.room}, ${getEventTypeLabel(event)}`}
+      onClick={() => onClick(event)}
+    >
+      <strong className="event-title">{event.title}</strong>
+      <span className="event-time"><Clock size={12} aria-hidden="true" /><span>{event.startTime}–{event.endTime}</span></span>
+      <span className="event-room"><MapPin size={12} aria-hidden="true" /><span>{event.room}</span></span>
+    </button>
+  );
+}
+
+function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, onEventClick, onSwipeDay }) {
+  const scrollRef = useRef(null);
+  const swipeStartRef = useRef(null);
+  const suppressClickUntilRef = useRef(0);
+  const carouselViewportRef = useRef(null);
+  const carouselTrackRef = useRef(null);
+  const settleTimerRef = useRef(null);
+  const settlingRef = useRef(false);
+  const today = todayISO();
+  const currentTimePosition = ((now.hour * 60 + now.minute - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+  const showCurrentTime = currentTimePosition >= 0 && currentTimePosition <= (END_HOUR - START_HOUR) * HOUR_HEIGHT;
+  const renderedDays = useMemo(() => isMobileDay ? [addDays(selectedDay, -1), selectedDay, addDays(selectedDay, 1)] : days, [days, isMobileDay, selectedDay]);
+  const eventsByDay = useMemo(() => {
+    const result = new Map(renderedDays.map((day) => [day, []]));
+    events.forEach((event) => result.get(event.date)?.push(event));
+    return result;
+  }, [renderedDays, events]);
+
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    scroll.scrollTop = Math.max(0, currentTimePosition - scroll.clientHeight * 0.3);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = null;
+    settlingRef.current = false;
+    const track = carouselTrackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = "translate3d(-33.333333%, 0, 0)";
+    }
+  }, [selectedDay, isMobileDay]);
+
+  useEffect(() => () => {
+    if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
+  }, []);
+
+  function settleCarousel(direction) {
+    const track = carouselTrackRef.current;
+    const width = carouselViewportRef.current?.clientWidth;
+    if (!track || !width) return;
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : 220;
+    settlingRef.current = true;
+    track.style.transition = `transform ${duration}ms var(--ease-out)`;
+    track.style.transform = `translate3d(calc(-33.333333% + ${-direction * width}px), 0, 0)`;
+    settleTimerRef.current = window.setTimeout(() => {
+      settleTimerRef.current = null;
+      if (direction) {
+        flushSync(() => onSwipeDay(direction));
+      } else {
+        track.style.transition = "none";
+        track.style.transform = "translate3d(-33.333333%, 0, 0)";
+        settlingRef.current = false;
+      }
+    }, duration + 16);
+  }
+
+  function handleTouchStart(event) {
+    if (!isMobileDay || event.touches.length !== 1 || settlingRef.current) {
+      swipeStartRef.current = null;
+      return;
+    }
+    swipeStartRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY, at: performance.now(), axis: null };
+  }
+
+  function handleTouchMove(event) {
+    const start = swipeStartRef.current;
+    if (!start || event.touches.length !== 1) return;
+    const distanceX = event.touches[0].clientX - start.x;
+    const distanceY = event.touches[0].clientY - start.y;
+    if (!start.axis && Math.max(Math.abs(distanceX), Math.abs(distanceY)) >= 8) {
+      start.axis = Math.abs(distanceX) > Math.abs(distanceY) * 1.2 ? "x" : "y";
+    }
+    if (start.axis !== "x") return;
+    const width = carouselViewportRef.current?.clientWidth ?? 0;
+    const offset = Math.max(-width, Math.min(width, distanceX));
+    const track = carouselTrackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = `translate3d(calc(-33.333333% + ${offset}px), 0, 0)`;
+    }
+  }
+
+  function handleTouchEnd(event) {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch || !isMobileDay || start.axis === "y") return;
+    const distanceX = touch.clientX - start.x;
+    const distanceY = touch.clientY - start.y;
+    if (Math.abs(distanceX) < 12 || Math.abs(distanceX) < Math.abs(distanceY) * 1.2) {
+      if (start.axis === "x") settleCarousel(0);
+      return;
+    }
+    suppressClickUntilRef.current = performance.now() + 350;
+    const width = carouselViewportRef.current?.clientWidth ?? 0;
+    const elapsed = Math.max(1, performance.now() - start.at);
+    const shouldChangeDay = Math.abs(distanceX) >= Math.min(96, width * 0.25) || (Math.abs(distanceX) >= 32 && Math.abs(distanceX) / elapsed > 0.45);
+    settleCarousel(shouldChangeDay ? (distanceX < 0 ? 1 : -1) : 0);
+  }
+
+  return (
+    <div
+      className={`calendar-surface ${view === "week" ? "week-surface" : "day-surface"}`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={() => {
+        if (swipeStartRef.current?.axis === "x") settleCarousel(0);
+        swipeStartRef.current = null;
+      }}
+      onClickCapture={(event) => {
+        if (performance.now() < suppressClickUntilRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
+    >
+      <div className="calendar-inner" style={{ "--day-count": days.length }}>
+        <div className="date-header">
+          <div aria-hidden="true" />
+          <div className="date-header-days">
+            {days.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined}>
+              <span>{formatWeekday(day)}</span>
+              <strong>{parseDay(day).getUTCDate()}</strong>
+            </div>)}
+          </div>
+        </div>
+        <div className="timeline-scroll" ref={scrollRef}>
+          <div className="timeline-body" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
+            <div className="time-axis">
+              {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
+              {showCurrentTime && days.includes(today) && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
+            </div>
+            {isMobileDay ? (
+              <div className="mobile-carousel-viewport" ref={carouselViewportRef}>
+                <div className="mobile-carousel-track" ref={carouselTrackRef}>
+                  {renderedDays.map((day) => (
+                    <div className="mobile-carousel-pane" key={day} inert={day !== selectedDay} aria-hidden={day !== selectedDay}>
+                      {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }} />)}
+                      <div className={`day-track${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}${isWeekend(day) ? " is-weekend" : ""}`}>
+                        {layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
+                        {day === today && showCurrentTime && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
+                      </div>
+                      {day === today && showCurrentTime && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="day-tracks">
+                {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }} />)}
+                {days.map((day) => (
+                  <div className={`day-track${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}${isWeekend(day) ? " is-weekend" : ""}`} key={day}>
+                    {layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
+                    {day === today && showCurrentTime && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
+                  </div>
+                ))}
+                {showCurrentTime && days.includes(today) && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventDialog({ event, onClose }) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!event) return;
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    const handleClose = () => onClose();
+    dialog?.addEventListener("close", handleClose);
+    return () => dialog?.removeEventListener("close", handleClose);
+  }, [event, onClose]);
+
+  if (!event) return null;
+
+  return (
+    <dialog className="event-dialog" ref={dialogRef} aria-labelledby="event-dialog-title" onClick={(e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }}>
+      <div className="dialog-content">
+        <button className="dialog-close icon-button" type="button" aria-label="Zamknij szczegóły" onClick={() => dialogRef.current?.close()}><X size={16} /></button>
+        <h2 id="event-dialog-title">{event.title}</h2>
+        <div className="dialog-detail"><CalendarDots size={16} /><span>{formatFullDate(event.date)}</span></div>
+        <div className="dialog-detail"><Clock size={16} /><span>{event.startTime}–{event.endTime}</span></div>
+        <div className="dialog-detail"><MapPin size={16} /><span>{event.room}</span></div>
+        <div className="dialog-detail"><User size={16} /><span>{event.instructor}</span></div>
+        <div className="dialog-badges">
+          <span className={`dialog-category type-${getEventType(event)}`}>{getEventTypeLabel(event)}</span>
+          <span className="dialog-group">{event.group}</span>
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
+export function App() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme === "light" ? "light" : "dark");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return window.localStorage.getItem("class-schedule-sidebar-collapsed") === "true"; } catch { return false; }
+  });
+  const [selectedDay, setSelectedDay] = useState(todayISO);
+  const [view, setView] = useState(() => window.matchMedia("(max-width: 760px)").matches ? "day" : "week");
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 760px)").matches);
+  const [miniMonth, setMiniMonth] = useState(todayISO);
+  const [allEvents, setAllEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const [selectedGroup, setSelectedGroup] = useState(() => {
+    try { return window.localStorage.getItem("class-schedule-language-group") ?? ""; } catch { return ""; }
+  });
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [now, setNow] = useState(currentWarsawTime);
+  const closeEvent = useCallback(() => setSelectedEvent(null), []);
+
+  useEffect(() => {
+    try { window.localStorage.setItem("class-schedule-theme", theme); } catch { /* Storage can be unavailable. */ }
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#151515" : "#faf9f7");
+  }, [theme]);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const handleChange = () => setIsMobile(query.matches);
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const schedule = await getSchedule();
+        if (active) { setAllEvents(schedule); setLoadError(false); setLoading(false); }
+      } catch {
+        if (active) { setLoadError(true); setLoading(false); }
+      }
+    }
+    load();
+    const clockTimer = window.setInterval(() => setNow(currentWarsawTime()), 60000);
+    const refreshTimer = window.setInterval(load, 10 * 60 * 1000);
+    const refreshOnFocus = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", refreshOnFocus);
+    return () => { active = false; window.clearInterval(clockTimer); window.clearInterval(refreshTimer); document.removeEventListener("visibilitychange", refreshOnFocus); };
+  }, [retryKey]);
+
+  const today = todayISO();
+  const languageGroups = useMemo(() => getLanguageGroups(allEvents), [allEvents]);
+  const activeGroup = languageGroups.includes(selectedGroup) ? selectedGroup : "";
+  const events = useMemo(() => filterByLanguageGroup(allEvents, activeGroup), [allEvents, activeGroup]);
+  const days = useMemo(() => view === "week" ? weekDays(selectedDay) : view === "month" ? monthDays(selectedDay) : [selectedDay], [selectedDay, view]);
+  const currentWeek = useMemo(() => weekDays(selectedDay), [selectedDay]);
+  const weeklyClasses = useMemo(() => events.filter((event) => currentWeek.includes(event.date)), [events, currentWeek]);
+  const monthlyClasses = useMemo(() => events.filter((event) => event.date.slice(0, 7) === selectedDay.slice(0, 7)), [events, selectedDay]);
+  const legendClasses = view === "month" ? monthlyClasses : weeklyClasses;
+  const legendTypes = useMemo(() => {
+    const present = new Set(events.map(getEventType));
+    return TYPE_ORDER.filter((type) => present.has(type));
+  }, [events]);
+  const classDates = useMemo(() => new Set(events.map((event) => event.date)), [events]);
+  const visibleClasses = useMemo(() => events.filter((event) => days.includes(event.date)), [events, days]);
+  const displayedCount = view === "month" ? monthlyClasses.length : visibleClasses.length;
+  const showToolbarDate = view === "week" || (view === "day" && !isMobile);
+  const titleDay = view === "week" ? startOfWeek(selectedDay) : selectedDay;
+  const [titleMonth, titleYear] = formatMonth(titleDay).split(" ");
+
+  function selectDay(day) {
+    setSelectedDay(day);
+    setMiniMonth(day);
+  }
+
+  function navigate(amount) {
+    selectDay(view === "month" ? shiftSelectedMonth(selectedDay, amount) : addDays(selectedDay, amount * (view === "week" ? 7 : 1)));
+  }
+
+  function toggleSidebar() {
+    const nextCollapsed = !sidebarCollapsed;
+    try { window.localStorage.setItem("class-schedule-sidebar-collapsed", String(nextCollapsed)); } catch { /* Storage can be unavailable. */ }
+    setSidebarCollapsed(nextCollapsed);
+  }
+
+  function chooseGroup(group) {
+    setSelectedGroup(group);
+    try {
+      if (group) window.localStorage.setItem("class-schedule-language-group", group);
+      else window.localStorage.removeItem("class-schedule-language-group");
+    } catch { /* Storage can be unavailable. */ }
+  }
+
+  return (
+    <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
+      <Sidebar selectedDay={selectedDay} miniMonth={miniMonth} setMiniMonth={setMiniMonth} classDates={classDates} legendClasses={legendClasses} legendTypes={legendTypes} languageGroups={languageGroups} selectedGroup={activeGroup} onGroupChange={chooseGroup} onSelectDay={selectDay} collapsed={sidebarCollapsed} />
+      <main className="main-area">
+        <header className="topbar">
+          <button
+            className="sidebar-toggle icon-button"
+            type="button"
+            aria-label={sidebarCollapsed ? "Pokaż panel boczny" : "Ukryj panel boczny"}
+            title={sidebarCollapsed ? "Pokaż panel boczny" : "Ukryj panel boczny"}
+            aria-controls="schedule-sidebar"
+            aria-expanded={!sidebarCollapsed}
+            onClick={toggleSidebar}
+          >
+            <SidebarSimple size={16} />
+          </button>
+          {languageGroups.length > 0 && <div className="collapsed-group-filter"><GroupFilter groups={languageGroups} value={activeGroup} onChange={chooseGroup} id="collapsed-language-group" /></div>}
+          <div className="view-switch" role="group" aria-label="Widok kalendarza" data-view={view}>
+            <span className="view-indicator" aria-hidden="true" />
+            <button className={view === "day" ? "active" : ""} type="button" aria-pressed={view === "day"} onClick={() => setView("day")}>Dzień</button>
+            <button className={view === "week" ? "active" : ""} type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>Tydzień</button>
+            <button className={view === "month" ? "active" : ""} type="button" aria-pressed={view === "month"} onClick={() => setView("month")}>Miesiąc</button>
+          </div>
+          <div className="topbar-right">
+            <button
+              className="theme-toggle icon-button"
+              type="button"
+              aria-label={theme === "dark" ? "Włącz jasny motyw" : "Włącz ciemny motyw"}
+              title={theme === "dark" ? "Jasny motyw" : "Ciemny motyw"}
+              aria-pressed={theme === "light"}
+              onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+            >
+              <span className="theme-icon theme-icon-sun" aria-hidden="true"><Sun size={20} weight="regular" /></span>
+              <span className="theme-icon theme-icon-moon" aria-hidden="true"><Moon size={20} weight="regular" /></span>
+            </button>
+          </div>
+        </header>
+        <div className="calendar-toolbar">
+          <div className="calendar-heading">
+            <h1><strong>{titleMonth}</strong> <span>{titleYear}</span></h1>
+            <div className="range-label">{showToolbarDate && <><span className="range-long">{view === "week" ? formatDateRange(days) : formatFullDate(selectedDay)}</span><span className="range-short">{view === "week" ? formatDateRange(days) : formatShortDate(selectedDay)}</span> <i>·</i> </>}{displayedCount} {classCountLabel(displayedCount)}</div>
+          </div>
+          <div className="toolbar-actions">
+            <button className="today-button" type="button" onClick={() => selectDay(todayISO())}><span className="control-face">Dzisiaj</span></button>
+            <div className="nav-buttons">
+              <button className="icon-button" type="button" aria-label={view === "month" ? "Poprzedni miesiąc" : view === "week" ? "Poprzedni tydzień" : "Poprzedni dzień"} onClick={() => navigate(-1)}><span className="control-face"><CaretLeft size={16} /></span></button>
+              <button className="icon-button" type="button" aria-label={view === "month" ? "Następny miesiąc" : view === "week" ? "Następny tydzień" : "Następny dzień"} onClick={() => navigate(1)}><span className="control-face"><CaretRight size={16} /></span></button>
+            </div>
+          </div>
+        </div>
+        {languageGroups.length > 0 && <div className="mobile-group-filter"><GroupFilter groups={languageGroups} value={activeGroup} onChange={chooseGroup} id="mobile-language-group" /></div>}
+        {view === "day" && <div className="mobile-date-strip" aria-label="Wybierz dzień">
+          {currentWeek.map((day) => <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => selectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button>)}
+        </div>}
+        <div className="calendar-wrapper">
+          {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile && view === "day" ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} />}
+          {!loading && legendTypes.length > 0 && <div className="canvas-legend" role="group" aria-label="Kolory rodzajów zajęć">
+            {legendTypes.map((type) => <span className="canvas-legend-item" key={type}><i className={`legend-swatch type-${type}`} aria-hidden="true" />{CLASS_TYPES[type].label}</span>)}
+          </div>}
+        </div>
+      </main>
+      <EventDialog event={selectedEvent} onClose={closeEvent} />
+    </div>
+  );
+}

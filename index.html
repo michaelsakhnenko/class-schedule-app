@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pl" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#151515" />
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("class-schedule-theme") === "light" ? "light" : "dark";
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
+    <link rel="icon" href="data:," />
+    <meta name="description" content="Przejrzysty plan zajęć dla studentów zarządzania." />
+    <title>Kalendarz zajęć</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
