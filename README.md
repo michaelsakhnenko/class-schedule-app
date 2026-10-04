@@ -19,7 +19,7 @@ npm run dev
 
 The UI loads `ClassEvent` objects through `getSchedule()` in `src/data/schedule.js`, which fetches `public/schedule.json`. The same file documents the normalized event shape. The browser refreshes the snapshot every ten minutes and when the tab becomes visible. It never substitutes fabricated classes when the snapshot cannot be loaded.
 
-Dates and times are local to `Europe/Warsaw`. The verified source forms for the current semester are `Wyk`, `Cw`, and `Konw`, mapped to `lecture`, `exercise`, and `seminar`. Unmapped forms can use `other` while retaining their source label in `typeLabel`. The visual mapping lives in `CLASS_TYPES` and CSS `type-*` classes; the legend lists only types present in the loaded events.
+Dates and times are local to `Europe/Warsaw`. The verified source forms for the current semester are `Wyk`, `Cw`, and `Konw`, mapped to `lecture`, `exercise`, and `seminar`. Unmapped forms can use `other` while retaining their source label in `typeLabel`. The visual mapping lives in `CLASS_TYPES` and CSS `type-*` classes; class types appear in event details.
 
 ## Live data integration findings
 

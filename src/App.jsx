@@ -12,7 +12,7 @@ import {
   User,
   X,
 } from "@phosphor-icons/react";
-import { CLASS_TYPES, filterByLanguageGroup, formatLanguageGroup, getEventType, getEventTypeLabel, getLanguageGroups, getSchedule } from "./data/schedule.js";
+import { filterByLanguageGroup, formatLanguageGroup, getEventType, getEventTypeLabel, getLanguageGroups, getSchedule } from "./data/schedule.js";
 import {
   addDays,
   classCountLabel,
@@ -36,7 +36,6 @@ const START_HOUR = 0;
 const END_HOUR = 24;
 const HOUR_HEIGHT = 78;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
-const TYPE_ORDER = ["lecture", "exercise", "seminar", "other"];
 
 function shiftMonth(day, amount) {
   const date = parseDay(day);
@@ -134,9 +133,7 @@ function GroupFilter({ groups, value, onChange, id }) {
   );
 }
 
-function Sidebar({ selectedDay, miniMonth, setMiniMonth, classDates, legendClasses, legendTypes, languageGroups, selectedGroup, onGroupChange, onSelectDay, collapsed }) {
-  const counts = legendTypes.map((type) => ({ type, count: legendClasses.filter((event) => getEventType(event) === type).length }));
-
+function Sidebar({ selectedDay, miniMonth, setMiniMonth, classDates, languageGroups, selectedGroup, onGroupChange, onSelectDay, collapsed }) {
   return (
     <aside id="schedule-sidebar" className="sidebar" aria-label="Panel boczny" aria-hidden={collapsed} inert={collapsed}>
       <div className="sidebar-main">
@@ -148,16 +145,6 @@ function Sidebar({ selectedDay, miniMonth, setMiniMonth, classDates, legendClass
           onMonthChange={(amount) => setMiniMonth((value) => shiftMonth(value, amount))}
         />
         {languageGroups.length > 0 && <div className="sidebar-group-filter"><GroupFilter groups={languageGroups} value={selectedGroup} onChange={onGroupChange} id="sidebar-language-group" /></div>}
-        {legendTypes.length > 0 && <section className="legend" aria-label="Kolory rodzajów zajęć">
-          <div className="sidebar-section-label">Rodzaje zajęć</div>
-          {counts.map(({ type, count }) => (
-            <div className="legend-row" key={type}>
-              <span className={`legend-swatch type-${type}`} />
-              <span>{CLASS_TYPES[type].label}</span>
-              <span className="legend-count">{count}</span>
-            </div>
-          ))}
-        </section>}
       </div>
     </aside>
   );
@@ -193,7 +180,7 @@ function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick })
                   {dayEvents.slice(0, 3).map((event) => <button className={`month-event type-${getEventType(event)}`} type="button" key={event.id} aria-label={`${event.title}, ${getEventTypeLabel(event)}, ${event.startTime}`} onClick={() => onEventClick(event)}><span>{event.startTime}</span><strong>{event.title}</strong></button>)}
                   {dayEvents.length > 3 && <span className="month-more">+{dayEvents.length - 3} więcej</span>}
                 </div>
-                <div className="month-dots" aria-hidden="true">{dayEvents.slice(0, 4).map((event) => <i className={`legend-swatch type-${getEventType(event)}`} key={event.id} />)}</div>
+                <div className="month-dots" aria-hidden="true">{dayEvents.slice(0, 4).map((event) => <i className={`month-dot type-${getEventType(event)}`} key={event.id} />)}</div>
               </div>
             );
           })}
@@ -490,11 +477,6 @@ export function App() {
   const currentWeek = useMemo(() => weekDays(selectedDay), [selectedDay]);
   const weeklyClasses = useMemo(() => events.filter((event) => currentWeek.includes(event.date)), [events, currentWeek]);
   const monthlyClasses = useMemo(() => events.filter((event) => event.date.slice(0, 7) === selectedDay.slice(0, 7)), [events, selectedDay]);
-  const legendClasses = view === "month" ? monthlyClasses : weeklyClasses;
-  const legendTypes = useMemo(() => {
-    const present = new Set(events.map(getEventType));
-    return TYPE_ORDER.filter((type) => present.has(type));
-  }, [events]);
   const classDates = useMemo(() => new Set(events.map((event) => event.date)), [events]);
   const visibleClasses = useMemo(() => events.filter((event) => days.includes(event.date)), [events, days]);
   const displayedCount = view === "month" ? monthlyClasses.length : visibleClasses.length;
@@ -527,7 +509,7 @@ export function App() {
 
   return (
     <div className={`app-shell${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
-      <Sidebar selectedDay={selectedDay} miniMonth={miniMonth} setMiniMonth={setMiniMonth} classDates={classDates} legendClasses={legendClasses} legendTypes={legendTypes} languageGroups={languageGroups} selectedGroup={activeGroup} onGroupChange={chooseGroup} onSelectDay={selectDay} collapsed={sidebarCollapsed} />
+      <Sidebar selectedDay={selectedDay} miniMonth={miniMonth} setMiniMonth={setMiniMonth} classDates={classDates} languageGroups={languageGroups} selectedGroup={activeGroup} onGroupChange={chooseGroup} onSelectDay={selectDay} collapsed={sidebarCollapsed} />
       <main className="main-area">
         <header className="topbar">
           <button
@@ -581,9 +563,6 @@ export function App() {
         </div>}
         <div className="calendar-wrapper">
           {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile && view === "day" ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} />}
-          {!loading && legendTypes.length > 0 && <div className="canvas-legend" role="group" aria-label="Kolory rodzajów zajęć">
-            {legendTypes.map((type) => <span className="canvas-legend-item" key={type}><i className={`legend-swatch type-${type}`} aria-hidden="true" />{CLASS_TYPES[type].label}</span>)}
-          </div>}
         </div>
       </main>
       <EventDialog event={selectedEvent} onClose={closeEvent} />

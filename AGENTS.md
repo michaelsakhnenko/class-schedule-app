@@ -14,8 +14,8 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - The selected reference is the user's dark Apple Calendar screenshot. Keep a calm, compact dark calendar layout with a desktop week view and mobile day view by default.
 - The primary accent is `#FFAE00`; use it sparingly for selected dates and key navigation emphasis.
 - Give Wykład, Ćwiczenia, and Konwersatorium distinct event colors. The source plan's "Forma zaj." column for 1 Oct 2026–21 Feb 2027 contains Wyk, Cw, and Konw; English classes are marked Cw. Lektorat was an invented demo category and should not appear unless a later source timetable actually uses it.
-- Derive both legends from the class types present in the loaded schedule, so they do not promise classes absent from the timetable. Keep an "Inne" color for an unmapped rare source form, preserve its original label in event details, and show that legend entry only if such an event exists.
-- Show class-type labels in normal Polish capitalization in details and the legend. Keep them off event cards.
+- Do not show class-type legends in the sidebar or calendar canvas. Keep an "Inne" color for an unmapped rare source form and preserve its original label in event details.
+- Show class-type labels in normal Polish capitalization in event details. Keep them off event cards.
 - Keep the UI data source behind `getSchedule()`. A Playwright importer reads the source's full-semester grid into `public/schedule.json`; the browser fetches that file and refreshes it while open. Do not change the calendar components to parse the source site directly.
 - Show common plan classes to everyone. Let each visitor choose one of the source's parallel English groups, keep that choice in local storage, and show only their English classes. Leave the choice unset for a new visitor, so nobody silently receives another group's classes.
 - Keep the interface free of app branding, the study-program sidebar card, and the small heading above the month title; the user explicitly removed these.
@@ -54,12 +54,11 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - Set the main month name in the calendar heading at font weight 600, with the year lighter at 400.
 - Keep the colored edge of class blocks restrained: 3px on timed cards and mobile month agenda cards, 2px on compact month events. Apply the edge consistently to every class type.
 - Align the mini-calendar's weekday initials directly over their date columns, including at the narrow sidebar width.
-- Put the class title first on event blocks, with icon-labeled time and room beneath it. Do not show the class type on event blocks; the colors and legend identify it.
+- Put the class title first on event blocks, with icon-labeled time and room beneath it. Do not show the class type on event blocks; the colors and event details identify it.
 - Use a small clock icon with the time range and a map pin with the room on event blocks.
 - Show the room on timed event cards at every viewport width, and use the same 8px card padding on desktop and mobile.
 - Use the same medium (500) font weight, line height, and per-theme color treatment for time and location metadata. Keep the class title bolder.
-- Show the class-type color legend in a full-width bar attached to the bottom of the main calendar area, with its content aligned left and the scrollable canvas ending above it. On mobile, use this bar in place of the old strip above the calendar.
-- Match the bottom legend bar's background to the calendar canvas in both themes.
+- Let the scrollable calendar canvas fill the space down to the bottom of the main area, without a fixed legend bar.
 - Keep the event-details close button icon-only without a visible fill or border, including on hover. Preserve its mobile touch target and keyboard focus indicator.
 - In event details, show the class name and metadata first. Place the class-type badge in the bottom badge row, to the left of the group badge, with matching height, padding, and text size. Keep its class color and 10% background tint; use a darker readable shade in light mode. Do not use a separate colored line above the details.
 - Shade Saturday and Sunday with a subtle neutral gray across their full day/week timeline columns and month cells in both themes. Leave the day/week date headers, mobile date selector, and month weekday header plain; date circles keep their existing selected/today treatment. Preserve class-type colors.
