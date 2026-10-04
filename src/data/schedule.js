@@ -42,11 +42,13 @@ export function getLanguageGroups(events) {
 }
 
 export function formatLanguageGroup(group) {
-  const match = /^(\d+\s+ang(?:Now|Prad))\s+([^/]+)/i.exec(group);
-  return match ? `${match[2]} · ${match[1]}` : group;
+  const level = /\s([A-C]\d\+?)(?:\/|$)/i.exec(group)?.[1];
+  if (!level) return group;
+  return level === "B2+" ? "B2" : level;
 }
 
 export function filterByLanguageGroup(events, selectedGroup) {
+  if (!selectedGroup) return events;
   return events.filter((event) => !isLanguageGroup(event.group) || event.group === selectedGroup);
 }
 

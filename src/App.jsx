@@ -2,12 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from "react-dom";
 import {
   CalendarDots,
+  CaretDown,
   CaretLeft,
   CaretRight,
   Clock,
   MapPin,
   Moon,
   SidebarSimple,
+  SlidersHorizontal,
   Sun,
   User,
   X,
@@ -125,11 +127,80 @@ function GroupFilter({ groups, value, onChange, id }) {
   return (
     <label className="group-filter" htmlFor={id}>
       <span>Grupa angielskiego</span>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">Wybierz grupę</option>
-        {groups.map((group) => <option key={group} value={group}>{formatLanguageGroup(group)}</option>)}
-      </select>
+      <span className="group-filter-control">
+        <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
+          <option value="">Wszystkie grupy</option>
+          {groups.map((group) => <option key={group} value={group}>{formatLanguageGroup(group)}</option>)}
+        </select>
+        <CaretDown size={16} aria-hidden="true" />
+      </span>
     </label>
+  );
+}
+
+function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePress = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const chooseGroup = (group) => {
+    onGroupChange(group);
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  return (
+    <div className="mobile-settings" ref={rootRef}>
+      <button
+        className="mobile-settings-trigger"
+        ref={triggerRef}
+        type="button"
+        aria-label="Ustawienia kalendarza"
+        aria-controls={open ? "mobile-settings-popover" : undefined}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <SlidersHorizontal size={20} weight="regular" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="mobile-settings-popover" id="mobile-settings-popover">
+          {groups.length > 0 && <GroupFilter groups={groups} value={value} onChange={chooseGroup} id="mobile-language-group" />}
+          <div className="mobile-settings-theme">
+            <span>Wygląd</span>
+            <button
+              className="mobile-theme-action"
+              type="button"
+              aria-label={theme === "dark" ? "Włącz jasny motyw" : "Włącz ciemny motyw"}
+              onClick={onThemeChange}
+            >
+              <span className="mobile-theme-icon-wrap" aria-hidden="true">
+                <span className="theme-icon theme-icon-sun"><Sun size={20} weight="regular" /></span>
+                <span className="theme-icon theme-icon-moon"><Moon size={20} weight="regular" /></span>
+              </span>
+              {theme === "dark" ? "Włącz jasny" : "Włącz ciemny"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -456,6 +527,17 @@ export function App() {
   }, [theme]);
 
   useEffect(() => {
+    const setPointerModality = () => { document.documentElement.dataset.inputModality = "pointer"; };
+    const setKeyboardModality = () => { document.documentElement.dataset.inputModality = "keyboard"; };
+    document.addEventListener("pointerdown", setPointerModality, true);
+    document.addEventListener("keydown", setKeyboardModality, true);
+    return () => {
+      document.removeEventListener("pointerdown", setPointerModality, true);
+      document.removeEventListener("keydown", setKeyboardModality, true);
+    };
+  }, []);
+
+  useEffect(() => {
     const query = window.matchMedia("(max-width: 760px)");
     const handleChange = () => setIsMobile(query.matches);
     query.addEventListener("change", handleChange);
@@ -555,6 +637,13 @@ export function App() {
             <h1><strong>{titleMonth}</strong> <span>{titleYear}</span></h1>
             <div className="range-label">{showToolbarDate && <><span className="range-long">{view === "week" ? formatDateRange(days) : formatFullDate(selectedDay)}</span><span className="range-short">{view === "week" ? formatDateRange(days) : formatShortDate(selectedDay)}</span> <i>·</i> </>}{displayedCount} {classCountLabel(displayedCount)}</div>
           </div>
+          {isMobile && <MobileSettings
+            groups={languageGroups}
+            value={activeGroup}
+            onGroupChange={chooseGroup}
+            theme={theme}
+            onThemeChange={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+          />}
           <div className="toolbar-actions">
             <button className="today-button" type="button" onClick={() => selectDay(todayISO())}><span className="control-face">Dzisiaj</span></button>
             <div className="nav-buttons">
@@ -563,7 +652,6 @@ export function App() {
             </div>
           </div>
         </div>
-        {languageGroups.length > 0 && <div className="mobile-group-filter"><GroupFilter groups={languageGroups} value={activeGroup} onChange={chooseGroup} id="mobile-language-group" /></div>}
         {view === "day" && <div className="mobile-date-strip" aria-label="Wybierz dzień">
           {currentWeek.map((day) => <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => selectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button>)}
         </div>}
