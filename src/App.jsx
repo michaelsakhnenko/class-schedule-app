@@ -133,6 +133,17 @@ function GroupFilter({ groups, value, onChange, id }) {
   );
 }
 
+function ViewSwitch({ view, onChange, className = "" }) {
+  return (
+    <div className={`view-switch ${className}`} role="group" aria-label="Widok kalendarza" data-view={view}>
+      <span className="view-indicator" aria-hidden="true" />
+      <button className={view === "day" ? "active" : ""} type="button" aria-pressed={view === "day"} onClick={() => onChange("day")}>Dzień</button>
+      <button className={view === "week" ? "active" : ""} type="button" aria-pressed={view === "week"} onClick={() => onChange("week")}>Tydzień</button>
+      <button className={view === "month" ? "active" : ""} type="button" aria-pressed={view === "month"} onClick={() => onChange("month")}>Miesiąc</button>
+    </div>
+  );
+}
+
 function Sidebar({ selectedDay, miniMonth, setMiniMonth, classDates, languageGroups, selectedGroup, onGroupChange, onSelectDay, collapsed }) {
   return (
     <aside id="schedule-sidebar" className="sidebar" aria-label="Panel boczny" aria-hidden={collapsed} inert={collapsed}>
@@ -524,12 +535,7 @@ export function App() {
             <SidebarSimple size={16} />
           </button>
           {languageGroups.length > 0 && <div className="collapsed-group-filter"><GroupFilter groups={languageGroups} value={activeGroup} onChange={chooseGroup} id="collapsed-language-group" /></div>}
-          <div className="view-switch" role="group" aria-label="Widok kalendarza" data-view={view}>
-            <span className="view-indicator" aria-hidden="true" />
-            <button className={view === "day" ? "active" : ""} type="button" aria-pressed={view === "day"} onClick={() => setView("day")}>Dzień</button>
-            <button className={view === "week" ? "active" : ""} type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>Tydzień</button>
-            <button className={view === "month" ? "active" : ""} type="button" aria-pressed={view === "month"} onClick={() => setView("month")}>Miesiąc</button>
-          </div>
+          <ViewSwitch view={view} onChange={setView} className="desktop-view-switch" />
           <div className="topbar-right">
             <button
               className="theme-toggle icon-button"
@@ -562,6 +568,7 @@ export function App() {
           {currentWeek.map((day) => <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => selectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button>)}
         </div>}
         <div className="calendar-wrapper">
+          <ViewSwitch view={view} onChange={setView} className="mobile-view-switch" />
           {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile && view === "day" ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} />}
         </div>
       </main>
