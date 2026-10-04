@@ -14,6 +14,8 @@
   --surface: #232323;
   --surface-raised: #2a2a2a;
   --surface-hover: #353535;
+  --floating-switch-bg: rgba(17, 17, 17, .68);
+  --floating-switch-border: rgba(255, 255, 255, .12);
   --line: #2b2b2b;
   --line-soft: #242424;
   --border-strong: #414141;
@@ -43,6 +45,8 @@
   --surface: #fffefd;
   --surface-raised: #f1efec;
   --surface-hover: #e8e5e0;
+  --floating-switch-bg: rgba(244, 242, 238, .70);
+  --floating-switch-border: rgba(60, 53, 45, .1);
   --line: #ebe8e3;
   --line-soft: #f0eeea;
   --border-strong: #e2ded8;
@@ -271,9 +275,10 @@ button.date-circle:active { transform: none; }
   .topbar-right { right: 12px; }
   .desktop-view-switch { display: none; }
   .calendar-wrapper { position: relative; }
-  .mobile-view-switch { position: absolute; z-index: 10; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; width: 196px; height: 40px; padding: 0 4px; transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0, 0, 0, .28); }
-  :root[data-theme="light"] .mobile-view-switch { box-shadow: 0 8px 24px rgba(40, 35, 25, .12); }
-  .view-switch button { min-height: 44px; padding: 8px 6px; font-size: 12px; }
+  .mobile-view-switch { position: absolute; z-index: 10; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; width: 228px; height: 48px; padding: 4px; border-color: var(--floating-switch-border); background: var(--floating-switch-bg); transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+  :root[data-theme="light"] .mobile-view-switch { box-shadow: 0 8px 24px rgba(40, 35, 25, .1); }
+  .mobile-view-switch .view-indicator { height: 38px; }
+  .mobile-view-switch button { min-height: 44px; padding: 8px 6px; font-size: 14px; }
   .timeline-scroll::after, .month-scroll::after { content: ""; display: block; height: calc(72px + env(safe-area-inset-bottom, 0px)); }
   .calendar-toolbar { min-height: 96px; padding: 12px 16px; align-items: flex-end; }
   .calendar-heading { min-width: 0; }
