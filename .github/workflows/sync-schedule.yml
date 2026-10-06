@@ -25,8 +25,12 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run sync:schedule
+      - name: Install browser for timetable refresh
+        if: github.event_name != 'push'
+        run: npx playwright install --with-deps chromium
+      - name: Refresh timetable for scheduled or manual runs
+        if: github.event_name != 'push'
+        run: npm run sync:schedule
       - name: Check whether the timetable changed
         id: changes
         run: |
