@@ -52,10 +52,23 @@ function validate(rows, events, start, end) {
   if (!rows.length) throw new Error("The full-semester timetable returned no class rows.");
   if (rows.length !== events.length) throw new Error("Some source rows were not normalized.");
   if (new Set(events.map((event) => event.id)).size !== events.length) throw new Error("Duplicate event IDs in source data.");
+  const semesterDays = (Date.parse(end) - Date.parse(start)) / 86400000 + 1;
+  const classDays = new Set(events.map((event) => event.date)).size;
+  if (semesterDays >= 60 && classDays < Math.max(6, Math.floor(semesterDays / 10))) {
+    throw new Error(`The full-semester grid contains classes on only ${classDays} dates across ${semesterDays} days. Refusing to publish a likely partial grid.`);
+  }
   for (const event of events) {
     if (event.date < start || event.date > end) throw new Error(`Class outside selected semester: ${event.id}`);
     if (!/^\d{2}:\d{2}$/.test(event.startTime) || !/^\d{2}:\d{2}$/.test(event.endTime) || event.endTime <= event.startTime) throw new Error(`Invalid class time: ${event.id}`);
     if (!event.title || !event.group) throw new Error(`Incomplete class row: ${event.id}`);
+  }
+}
+
+function validateCoverage(imported, previous, start, end) {
+  if (previous?.sourceRange?.start !== start || previous?.sourceRange?.end !== end) return;
+  const previousCount = previous.events.filter((event) => event.date >= start && event.date <= end).length;
+  if (previousCount >= 20 && imported.length < previousCount * 0.6) {
+    throw new Error(`The full-semester grid returned only ${imported.length} classes; the previous snapshot had ${previousCount}. Keeping the published snapshot until the source can be checked.`);
   }
 }
 
@@ -85,15 +98,20 @@ async function main() {
     if (selectedDates.length !== 2) throw new Error(`Expected two semester dates, found ${selectedDates.length}.`);
     [start, end] = selectedDates.map(polishDateToISO);
 
+    const grid = page.locator("#gridViewPlanyTokow_DXMainTable");
+    const previousGrid = await grid.evaluate((table) => table.innerHTML);
     const gridResponse = page.waitForResponse((response) =>
       response.url().includes(`/Plany/PlanyTokowGridCustom/${PLAN_ID}`) && response.request().method() === "POST",
       { timeout: 45000 }
     );
     await page.getByRole("link", { name: "Szukaj" }).click();
     if (!(await gridResponse).ok()) throw new Error("The timetable grid request failed.");
-    await page.locator('[id^="gridViewPlanyTokow_DXDataRow"]').first().waitFor({ timeout: 45000 });
+    await page.waitForFunction((oldGrid) => {
+      const table = document.querySelector("#gridViewPlanyTokow_DXMainTable");
+      return table && table.innerHTML !== oldGrid && table.querySelector('[id^="gridViewPlanyTokow_DXDataRow"]');
+    }, previousGrid, { timeout: 45000 });
 
-    rows = await page.locator("#gridViewPlanyTokow_DXMainTable").evaluate((table) => {
+    rows = await grid.evaluate((table) => {
       let date = null;
       const result = [];
       for (const row of table.querySelectorAll("tr")) {
@@ -126,6 +144,7 @@ async function main() {
   const imported = rows.map(normalize);
   validate(rows, imported, start, end);
   const previous = await readPrevious();
+  validateCoverage(imported, previous, start, end);
   const preserved = (previous?.events ?? []).filter((event) => event.date < start || event.date > end);
   const events = [...preserved, ...imported].sort((a, b) =>
     a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.group.localeCompare(b.group) || a.title.localeCompare(b.title)
