@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { assessSyncStatus, formatSyncTime } from "../src/data/syncStatus.js";
+import { assessSyncStatus, formatSyncTime, latestTimetableRefresh } from "../src/data/syncStatus.js";
 
 const checkedAt = "2026-10-06T10:17:00.000Z";
 const heartbeat = { checkedAt };
@@ -19,4 +19,11 @@ test("a newer failed run is distinguished from a missed or delayed run", () => {
 
 test("timestamps are shown in Warsaw time", () => {
   assert.match(formatSyncTime(checkedAt), /12:17/);
+});
+
+test("UI deployments do not mask the latest timetable refresh", () => {
+  const push = { event: "push", conclusion: "success" };
+  const scheduled = { event: "schedule", conclusion: "failure" };
+  assert.equal(latestTimetableRefresh([push, scheduled]), scheduled);
+  assert.equal(latestTimetableRefresh([push]), null);
 });

@@ -1,4 +1,4 @@
-const WORKFLOW_API = "https://api.github.com/repos/michaelsakhnenko/class-schedule-app/actions/workflows/sync-schedule.yml/runs?per_page=5";
+const WORKFLOW_API = "https://api.github.com/repos/michaelsakhnenko/class-schedule-app/actions/workflows/sync-schedule.yml/runs?per_page=30";
 const DELAY_MS = 95 * 60 * 1000;
 
 export async function getSyncHeartbeat() {
@@ -15,7 +15,11 @@ export async function getLatestWorkflowRun() {
   const response = await fetch(WORKFLOW_API, { headers: { Accept: "application/vnd.github+json" } });
   if (!response.ok) throw new Error(`Could not load workflow history (${response.status}).`);
   const payload = await response.json();
-  return payload.workflow_runs?.[0] ?? null;
+  return latestTimetableRefresh(payload.workflow_runs);
+}
+
+export function latestTimetableRefresh(runs) {
+  return runs?.find((run) => run.event === "schedule" || run.event === "workflow_dispatch") ?? null;
 }
 
 export function assessSyncStatus(heartbeat, latestRun, now = Date.now()) {
