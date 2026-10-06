@@ -519,14 +519,209 @@ function EventCard({ event, column, columns, onClick }) {
   );
 }
 
-function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobileWeek, now, onEventClick, onSwipeDay, onWeekChange }) {
+function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChange, scrollTopRef }) {
+  const weekStart = startOfWeek(selectedDay);
+  const weeks = useMemo(() => [-1, 0, 1].map((offset) => addDays(weekStart, offset * 7)), [weekStart]);
+  const eventsByDay = useMemo(() => {
+    const result = new Map();
+    events.forEach((event) => {
+      if (!result.has(event.date)) result.set(event.date, []);
+      result.get(event.date).push(event);
+    });
+    return result;
+  }, [events]);
+  const viewportRef = useRef(null);
+  const trackRef = useRef(null);
+  const scrollerRefs = useRef([]);
+  const timelineRefs = useRef([]);
+  const edgeGestureRef = useRef(null);
+  const transitionTimerRef = useRef(null);
+  const scrollTimerRef = useRef(null);
+  const entryDirectionRef = useRef(0);
+  const transitioningRef = useRef(false);
+  const suppressClickUntilRef = useRef(0);
+  const today = todayISO();
+  const currentTimePosition = ((now.hour * 60 + now.minute) / 60) * HOUR_HEIGHT;
+  const showCurrentTime = currentTimePosition >= 0 && currentTimePosition <= END_HOUR * HOUR_HEIGHT;
+  const canPreviousWeek = weekStart > startOfWeek(CALENDAR_START);
+  const canNextWeek = weekStart < startOfWeek(CALENDAR_END);
+
+  useLayoutEffect(() => {
+    if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = null;
+    transitioningRef.current = false;
+    const track = trackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = "translate3d(-33.333333%, 0, 0)";
+    }
+    scrollerRefs.current.forEach((scroller, index) => {
+      if (!scroller) return;
+      const maximum = scroller.scrollWidth - scroller.clientWidth;
+      if (index === 0) scroller.scrollLeft = maximum;
+      else if (index === 2) scroller.scrollLeft = 0;
+      else if (entryDirectionRef.current) scroller.scrollLeft = entryDirectionRef.current > 0 ? 0 : maximum;
+      else {
+        const weekday = Math.round((parseDay(selectedDay) - parseDay(weekStart)) / 86400000);
+        scroller.scrollLeft = Math.max(0, Math.min(maximum, 48 + weekday * MOBILE_WEEK_DAY_WIDTH + MOBILE_WEEK_DAY_WIDTH / 2 - scroller.clientWidth / 2));
+      }
+    });
+    entryDirectionRef.current = 0;
+    const currentTimeline = timelineRefs.current[1];
+    if (scrollTopRef.current === null && currentTimeline) scrollTopRef.current = Math.max(0, currentTimePosition - currentTimeline.clientHeight * 0.3);
+    timelineRefs.current.forEach((timeline) => { if (timeline) timeline.scrollTop = scrollTopRef.current ?? 0; });
+  }, [weekStart]);
+
+  useEffect(() => () => {
+    if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
+    if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
+  }, []);
+
+  function selectVisibleDay() {
+    const scroller = scrollerRefs.current[1];
+    if (!scroller || transitioningRef.current) return;
+    const center = scroller.scrollLeft + scroller.clientWidth / 2;
+    const index = Math.max(0, Math.min(6, Math.floor((center - 48) / MOBILE_WEEK_DAY_WIDTH)));
+    const day = clampCalendarDay(addDays(weekStart, index));
+    if (day !== selectedDay) onWeekChange(day);
+  }
+
+  function handleNativeScroll() {
+    if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = window.setTimeout(selectVisibleDay, 140);
+  }
+
+  function slideToWeek(direction) {
+    if (transitioningRef.current) return;
+    const track = trackRef.current;
+    const width = viewportRef.current?.clientWidth ?? 0;
+    if (!track || !width) return;
+    transitioningRef.current = true;
+    suppressClickUntilRef.current = performance.now() + 350;
+    const currentTop = timelineRefs.current[1]?.scrollTop ?? 0;
+    scrollTopRef.current = currentTop;
+    timelineRefs.current.forEach((timeline) => { if (timeline) timeline.scrollTop = currentTop; });
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220;
+    track.style.transition = duration ? `transform ${duration}ms var(--ease-out)` : "none";
+    track.style.transform = `translate3d(calc(-33.333333% + ${-direction * width}px), 0, 0)`;
+    transitionTimerRef.current = window.setTimeout(() => {
+      transitionTimerRef.current = null;
+      entryDirectionRef.current = direction;
+      flushSync(() => onWeekChange(clampCalendarDay(addDays(weekStart, direction > 0 ? 7 : -1))));
+    }, duration + 16);
+  }
+
+  function resetEdgeDrag() {
+    const track = trackRef.current;
+    if (!track) return;
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
+    track.style.transition = duration ? `transform ${duration}ms var(--ease-out)` : "none";
+    track.style.transform = "translate3d(-33.333333%, 0, 0)";
+  }
+
+  function startEdgeTouch(event) {
+    if (event.touches.length !== 1 || transitioningRef.current) return;
+    const scroller = event.currentTarget;
+    const maximum = scroller.scrollWidth - scroller.clientWidth;
+    edgeGestureRef.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+      previous: canPreviousWeek && scroller.scrollLeft <= 2,
+      next: canNextWeek && scroller.scrollLeft >= maximum - 2,
+      direction: 0,
+    };
+  }
+
+  function moveEdgeTouch(event) {
+    const gesture = edgeGestureRef.current;
+    if (!gesture || event.touches.length !== 1) return;
+    const distanceX = event.touches[0].clientX - gesture.x;
+    const distanceY = event.touches[0].clientY - gesture.y;
+    if (Math.abs(distanceX) < 8 || Math.abs(distanceX) < Math.abs(distanceY) * 1.2) return;
+    const direction = distanceX < 0 && gesture.next ? 1 : distanceX > 0 && gesture.previous ? -1 : 0;
+    if (!direction) return;
+    gesture.direction = direction;
+    const width = viewportRef.current?.clientWidth ?? 0;
+    const offset = Math.max(-width, Math.min(width, distanceX));
+    const track = trackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = `translate3d(calc(-33.333333% + ${offset}px), 0, 0)`;
+    }
+  }
+
+  function finishEdgeTouch(event, cancelled = false) {
+    const gesture = edgeGestureRef.current;
+    edgeGestureRef.current = null;
+    if (!gesture?.direction) return;
+    suppressClickUntilRef.current = performance.now() + 350;
+    const distanceX = (event.changedTouches[0]?.clientX ?? gesture.x) - gesture.x;
+    const threshold = Math.min(96, (viewportRef.current?.clientWidth ?? 0) * 0.25);
+    if (!cancelled && Math.abs(distanceX) >= threshold) slideToWeek(gesture.direction);
+    else resetEdgeDrag();
+  }
+
+  return (
+    <div className="calendar-surface week-surface mobile-week-surface" ref={viewportRef}>
+      <div className="mobile-week-track" ref={trackRef} onClickCapture={(event) => {
+        if (performance.now() < suppressClickUntilRef.current) { event.preventDefault(); event.stopPropagation(); }
+      }}>
+        {weeks.map((paneWeek, paneIndex) => {
+          const paneDays = weekDays(paneWeek);
+          const showNow = showCurrentTime && paneDays.includes(today);
+          return <div className="mobile-week-pane" key={paneWeek} inert={paneIndex !== 1} aria-hidden={paneIndex !== 1}>
+            <div
+              className="mobile-week-native-scroll"
+              ref={(node) => { scrollerRefs.current[paneIndex] = node; }}
+              role={paneIndex === 1 ? "region" : undefined}
+              aria-label={paneIndex === 1 ? "Kalendarz tygodniowy" : undefined}
+              tabIndex={paneIndex === 1 ? 0 : -1}
+              onScroll={paneIndex === 1 ? handleNativeScroll : undefined}
+              onTouchStart={paneIndex === 1 ? startEdgeTouch : undefined}
+              onTouchMove={paneIndex === 1 ? moveEdgeTouch : undefined}
+              onTouchEnd={paneIndex === 1 ? finishEdgeTouch : undefined}
+              onTouchCancel={paneIndex === 1 ? (event) => finishEdgeTouch(event, true) : undefined}
+              onKeyDown={paneIndex === 1 ? (event) => {
+                if (event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+                const scroller = event.currentTarget;
+                const maximum = scroller.scrollWidth - scroller.clientWidth;
+                if (event.key === "ArrowLeft" && scroller.scrollLeft <= 1 && canPreviousWeek) { event.preventDefault(); slideToWeek(-1); }
+                if (event.key === "ArrowRight" && scroller.scrollLeft >= maximum - 1 && canNextWeek) { event.preventDefault(); slideToWeek(1); }
+              } : undefined}
+            >
+              <div className="calendar-inner" style={{ width: `${48 + MOBILE_WEEK_WIDTH}px`, "--day-count": 7 }}>
+                <div className="date-header"><div aria-hidden="true" /><div className="date-header-days">
+                  {paneDays.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined} aria-hidden={!isCalendarDay(day) ? true : undefined}>
+                    {isCalendarDay(day) && <><span>{formatWeekday(day)}</span><strong>{parseDay(day).getUTCDate()}</strong></>}
+                  </div>)}
+                </div></div>
+                <div className="timeline-scroll" ref={(node) => { timelineRefs.current[paneIndex] = node; }} onScroll={paneIndex === 1 ? (event) => { scrollTopRef.current = event.currentTarget.scrollTop; } : undefined}>
+                  <div className="timeline-body" style={{ height: `${END_HOUR * HOUR_HEIGHT}px` }}>
+                    <div className="time-axis">
+                      {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${hour * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
+                      {showNow && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
+                    </div>
+                    <div className="day-tracks">
+                      {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${hour * HOUR_HEIGHT}px` }} />)}
+                      {paneDays.map((day) => <div className={`day-track${day === today ? " is-today" : ""}${isWeekend(day) && isCalendarDay(day) ? " is-weekend" : ""}`} key={day} inert={!isCalendarDay(day)} aria-hidden={!isCalendarDay(day) ? true : undefined}>
+                        {isCalendarDay(day) && layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
+                        {day === today && showNow && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
+                      </div>)}
+                      {showNow && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, onEventClick, onSwipeDay, scrollTopRef }) {
   const scrollRef = useRef(null);
-  const weekSurfaceRef = useRef(null);
-  const weekAdjustmentRef = useRef(null);
-  const weekGestureRef = useRef(null);
-  const weekAnimationRef = useRef(null);
-  const weekAnimationModeRef = useRef(null);
-  const weekSettlingRef = useRef(false);
   const swipeStartRef = useRef(null);
   const suppressClickUntilRef = useRef(0);
   const carouselViewportRef = useRef(null);
@@ -536,15 +731,9 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
   const today = todayISO();
   const currentTimePosition = ((now.hour * 60 + now.minute - START_HOUR * 60) / 60) * HOUR_HEIGHT;
   const showCurrentTime = currentTimePosition >= 0 && currentTimePosition <= (END_HOUR - START_HOUR) * HOUR_HEIGHT;
-  const mobileWeekStart = startOfWeek(selectedDay);
-  const mobileWeekWindowStart = addDays(mobileWeekStart, -7);
-  const mobileWeekDays = useMemo(() => Array.from({ length: 21 }, (_, index) => addDays(mobileWeekWindowStart, index)), [mobileWeekWindowStart]);
-  const firstCalendarWeek = startOfWeek(CALENDAR_START);
-  const lastCalendarWeek = startOfWeek(CALENDAR_END);
   const carouselDays = useMemo(() => [addDays(selectedDay, -1), selectedDay, addDays(selectedDay, 1)], [selectedDay]);
-  const renderedDays = isMobileWeek ? mobileWeekDays : isMobileDay ? carouselDays : days;
-  const dayColumns = isMobileWeek ? renderedDays : days;
-  const showNowInColumns = showCurrentTime && (isMobileWeek ? days.includes(today) : dayColumns.includes(today));
+  const renderedDays = isMobileDay ? carouselDays : days;
+  const showNowInColumns = showCurrentTime && days.includes(today);
   const eventsByDay = useMemo(() => {
     const result = new Map(renderedDays.map((day) => [day, []]));
     events.forEach((event) => result.get(event.date)?.push(event));
@@ -554,37 +743,9 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
   useLayoutEffect(() => {
     const scroll = scrollRef.current;
     if (!scroll) return;
-    scroll.scrollTop = Math.max(0, currentTimePosition - scroll.clientHeight * 0.3);
+    scroll.scrollTop = scrollTopRef.current ?? Math.max(0, currentTimePosition - scroll.clientHeight * 0.3);
+    scrollTopRef.current = scroll.scrollTop;
   }, []);
-
-  useLayoutEffect(() => {
-    if (!isMobileWeek) return;
-    const surface = weekSurfaceRef.current;
-    if (!surface) return;
-    const leftBound = 48 + MOBILE_WEEK_WIDTH;
-    const rightBound = leftBound + MOBILE_WEEK_WIDTH - surface.clientWidth;
-    if (weekAdjustmentRef.current !== null) {
-      surface.scrollLeft += weekAdjustmentRef.current;
-      weekAdjustmentRef.current = null;
-    } else {
-      const weekday = Math.round((parseDay(selectedDay) - parseDay(mobileWeekStart)) / 86400000);
-      const centered = leftBound + weekday * MOBILE_WEEK_DAY_WIDTH + MOBILE_WEEK_DAY_WIDTH / 2 - surface.clientWidth / 2;
-      surface.scrollLeft = Math.max(leftBound, Math.min(rightBound, centered));
-    }
-  }, [isMobileWeek, mobileWeekStart]);
-
-  useEffect(() => () => {
-    if (weekAnimationRef.current) window.cancelAnimationFrame(weekAnimationRef.current);
-  }, []);
-
-  useEffect(() => {
-    if (isMobileWeek) return;
-    if (weekAnimationRef.current) window.cancelAnimationFrame(weekAnimationRef.current);
-    weekAnimationRef.current = null;
-    weekAnimationModeRef.current = null;
-    weekGestureRef.current = null;
-    weekSettlingRef.current = false;
-  }, [isMobileWeek]);
 
   useLayoutEffect(() => {
     if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
@@ -666,173 +827,9 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
     settleCarousel(shouldChangeDay ? (distanceX < 0 ? 1 : -1) : 0);
   }
 
-  function stopWeekAnimation() {
-    if (weekAnimationRef.current) window.cancelAnimationFrame(weekAnimationRef.current);
-    weekAnimationRef.current = null;
-    weekAnimationModeRef.current = null;
-    weekSettlingRef.current = false;
-  }
-
-  function animateWeekTo(target, onComplete, mode = "settle") {
-    const surface = weekSurfaceRef.current;
-    if (!surface) return;
-    stopWeekAnimation();
-    const start = surface.scrollLeft;
-    const distance = target - start;
-    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 200;
-    if (duration === 0 || Math.abs(distance) < 1) {
-      surface.scrollLeft = target;
-      onComplete?.();
-      return;
-    }
-    weekSettlingRef.current = true;
-    weekAnimationModeRef.current = mode;
-    let startedAt = null;
-    function frame(time) {
-      if (startedAt === null) startedAt = time;
-      const progress = Math.min(1, (time - startedAt) / duration);
-      surface.scrollLeft = start + distance * (1 - (1 - progress) ** 3);
-      if (progress < 1) {
-        weekAnimationRef.current = window.requestAnimationFrame(frame);
-      } else {
-        weekAnimationRef.current = null;
-        weekAnimationModeRef.current = null;
-        onComplete?.();
-        weekSettlingRef.current = false;
-      }
-    }
-    weekAnimationRef.current = window.requestAnimationFrame(frame);
-  }
-
-  function coastWithinWeek(surface, velocity, leftBound, rightBound) {
-    const speed = Math.max(-3, Math.min(3, velocity));
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || Math.abs(speed) < 0.08) {
-      surface.scrollLeft = Math.max(leftBound, Math.min(rightBound, surface.scrollLeft));
-      selectVisibleWeekDay(surface);
-      return;
-    }
-    stopWeekAnimation();
-    weekSettlingRef.current = true;
-    weekAnimationModeRef.current = "coast";
-    const start = surface.scrollLeft;
-    const decay = -Math.log(0.995);
-    let startedAt = null;
-    function frame(time) {
-      if (startedAt === null) startedAt = time;
-      const elapsed = time - startedAt;
-      const projected = start + speed * (1 - Math.exp(-decay * elapsed)) / decay;
-      surface.scrollLeft = Math.max(leftBound, Math.min(rightBound, projected));
-      const atEdge = projected <= leftBound || projected >= rightBound;
-      if (!atEdge && Math.abs(speed * Math.exp(-decay * elapsed)) > 0.025 && elapsed < 1200) {
-        weekAnimationRef.current = window.requestAnimationFrame(frame);
-      } else {
-        stopWeekAnimation();
-        selectVisibleWeekDay(surface);
-      }
-    }
-    weekAnimationRef.current = window.requestAnimationFrame(frame);
-  }
-
-  function changeMobileWeek(direction, surface) {
-    const leftBound = 48 + MOBILE_WEEK_WIDTH;
-    const rightBound = leftBound + MOBILE_WEEK_WIDTH - surface.clientWidth;
-    const target = direction > 0 ? rightBound + surface.clientWidth : leftBound - surface.clientWidth;
-    animateWeekTo(target, () => {
-      weekAdjustmentRef.current = -direction * MOBILE_WEEK_WIDTH;
-      flushSync(() => onWeekChange(addDays(mobileWeekStart, direction > 0 ? 7 : -1)));
-    }, "week-change");
-  }
-
-  function selectVisibleWeekDay(surface) {
-    const center = surface.scrollLeft + surface.clientWidth / 2;
-    const index = Math.max(0, Math.min(6, Math.floor((center - 48 - MOBILE_WEEK_WIDTH) / MOBILE_WEEK_DAY_WIDTH)));
-    const day = clampCalendarDay(addDays(mobileWeekStart, index));
-    if (day !== selectedDay) onWeekChange(day);
-  }
-
-  function handleWeekPointerDown(event) {
-    if (!isMobileWeek || weekAnimationModeRef.current === "week-change" || !event.isPrimary || (event.pointerType !== "touch" && event.pointerType !== "mouse")) return;
-    stopWeekAnimation();
-    const surface = event.currentTarget;
-    const leftBound = 48 + MOBILE_WEEK_WIDTH;
-    const rightBound = leftBound + MOBILE_WEEK_WIDTH - surface.clientWidth;
-    weekGestureRef.current = {
-      pointerId: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      scrollLeft: surface.scrollLeft,
-      leftBound,
-      rightBound,
-      canPrevious: surface.scrollLeft <= leftBound + 2 && mobileWeekStart > firstCalendarWeek,
-      canNext: surface.scrollLeft >= rightBound - 2 && mobileWeekStart < lastCalendarWeek,
-      axis: null,
-      samples: [{ left: surface.scrollLeft, at: performance.now() }],
-    };
-  }
-
-  function handleWeekPointerMove(event) {
-    const gesture = weekGestureRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    const distanceX = event.clientX - gesture.x;
-    const distanceY = event.clientY - gesture.y;
-    if (!gesture.axis && Math.max(Math.abs(distanceX), Math.abs(distanceY)) >= 8) {
-      gesture.axis = Math.abs(distanceX) > Math.abs(distanceY) * 1.2 ? "x" : "y";
-      if (gesture.axis === "x") event.currentTarget.setPointerCapture(event.pointerId);
-    }
-    if (gesture.axis !== "x") return;
-    const surface = event.currentTarget;
-    const minimum = gesture.canPrevious ? gesture.leftBound - surface.clientWidth : gesture.leftBound;
-    const maximum = gesture.canNext ? gesture.rightBound + surface.clientWidth : gesture.rightBound;
-    surface.scrollLeft = Math.max(minimum, Math.min(maximum, gesture.scrollLeft - distanceX));
-    const now = performance.now();
-    gesture.samples.push({ left: surface.scrollLeft, at: now });
-    gesture.samples = gesture.samples.filter((sample) => now - sample.at <= 100);
-  }
-
-  function finishWeekPointer(event, cancelled = false) {
-    const gesture = weekGestureRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    weekGestureRef.current = null;
-    if (gesture.axis !== "x") return;
-    suppressClickUntilRef.current = performance.now() + 350;
-    const surface = event.currentTarget;
-    const threshold = Math.min(96, surface.clientWidth * 0.25);
-    if (!cancelled && gesture.canNext && surface.scrollLeft - gesture.rightBound >= threshold) {
-      changeMobileWeek(1, surface);
-    } else if (!cancelled && gesture.canPrevious && gesture.leftBound - surface.scrollLeft >= threshold) {
-      changeMobileWeek(-1, surface);
-    } else {
-      const last = gesture.samples.at(-1);
-      const first = gesture.samples[0];
-      const elapsed = Math.max(1, last.at - first.at);
-      const velocity = !cancelled && performance.now() - last.at < 80 ? (last.left - first.left) / elapsed : 0;
-      coastWithinWeek(surface, velocity, gesture.leftBound, gesture.rightBound);
-    }
-  }
-
   return (
     <div
       className={`calendar-surface ${view === "week" ? "week-surface" : "day-surface"}`}
-      ref={weekSurfaceRef}
-      role={isMobileWeek ? "region" : undefined}
-      aria-label={isMobileWeek ? "Kalendarz tygodniowy" : undefined}
-      tabIndex={isMobileWeek ? 0 : undefined}
-      onKeyDown={(event) => {
-        if (!isMobileWeek || weekAnimationModeRef.current === "week-change" || event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
-        event.preventDefault();
-        stopWeekAnimation();
-        const surface = event.currentTarget;
-        const leftBound = 48 + MOBILE_WEEK_WIDTH;
-        const rightBound = leftBound + MOBILE_WEEK_WIDTH - surface.clientWidth;
-        const direction = event.key === "ArrowRight" ? 1 : -1;
-        if (direction > 0 && surface.scrollLeft >= rightBound - 1 && mobileWeekStart < lastCalendarWeek) changeMobileWeek(1, surface);
-        else if (direction < 0 && surface.scrollLeft <= leftBound + 1 && mobileWeekStart > firstCalendarWeek) changeMobileWeek(-1, surface);
-        else animateWeekTo(Math.max(leftBound, Math.min(rightBound, surface.scrollLeft + direction * MOBILE_WEEK_DAY_WIDTH)), () => selectVisibleWeekDay(surface));
-      }}
-      onPointerDown={handleWeekPointerDown}
-      onPointerMove={handleWeekPointerMove}
-      onPointerUp={finishWeekPointer}
-      onPointerCancel={(event) => finishWeekPointer(event, true)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -847,16 +844,16 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
         }
       }}
     >
-      <div className="calendar-inner" style={{ "--day-count": dayColumns.length, ...(isMobileWeek ? { width: `${48 + dayColumns.length * MOBILE_WEEK_DAY_WIDTH}px` } : {}) }}>
+      <div className="calendar-inner" style={{ "--day-count": days.length }}>
         <div className="date-header">
           <div aria-hidden="true" />
           <div className="date-header-days">
-            {dayColumns.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined} aria-hidden={!isCalendarDay(day) || (isMobileWeek && !days.includes(day)) ? true : undefined}>
+            {days.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined} aria-hidden={!isCalendarDay(day) ? true : undefined}>
               {isCalendarDay(day) && <><span>{formatWeekday(day)}</span><strong>{parseDay(day).getUTCDate()}</strong></>}
             </div>)}
           </div>
         </div>
-        <div className="timeline-scroll" ref={scrollRef}>
+        <div className="timeline-scroll" ref={scrollRef} onScroll={(event) => { scrollTopRef.current = event.currentTarget.scrollTop; }}>
           <div className="timeline-body" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
             <div className="time-axis">
               {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
@@ -880,8 +877,8 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
             ) : (
               <div className="day-tracks">
                 {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }} />)}
-                {dayColumns.map((day) => (
-                  <div className={`day-track${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}${isWeekend(day) && isCalendarDay(day) ? " is-weekend" : ""}`} key={day} inert={!isCalendarDay(day) || (isMobileWeek && !days.includes(day))} aria-hidden={!isCalendarDay(day) || (isMobileWeek && !days.includes(day)) ? true : undefined}>
+                {days.map((day) => (
+                  <div className={`day-track${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}${isWeekend(day) && isCalendarDay(day) ? " is-weekend" : ""}`} key={day} inert={!isCalendarDay(day)} aria-hidden={!isCalendarDay(day) ? true : undefined}>
                     {isCalendarDay(day) && layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
                     {day === today && showCurrentTime && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
                   </div>
@@ -954,6 +951,7 @@ export function App() {
   const [syncHistoryLoading, setSyncHistoryLoading] = useState(false);
   const [syncHistoryError, setSyncHistoryError] = useState(false);
   const lastHistoryFetch = useRef(0);
+  const timelineScrollTopRef = useRef(null);
   const closeEvent = useCallback(() => setSelectedEvent(null), []);
 
   useEffect(() => {
@@ -1134,7 +1132,7 @@ export function App() {
         </div>}
         <div className="calendar-wrapper">
           <ViewSwitch view={view} onChange={selectView} className="mobile-view-switch" />
-          {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={isMobile ? events : visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} onSwipeMonth={navigate} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} isMobileWeek={isMobile && view === "week"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} onWeekChange={selectDay} />}
+          {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={isMobile ? events : visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} onSwipeMonth={navigate} /> : isMobile && view === "week" ? <MobileWeekTimeline selectedDay={selectedDay} events={events} now={now} onEventClick={setSelectedEvent} onWeekChange={selectDay} scrollTopRef={timelineScrollTopRef} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} scrollTopRef={timelineScrollTopRef} />}
         </div>
       </main>
       <EventDialog event={selectedEvent} onClose={closeEvent} />

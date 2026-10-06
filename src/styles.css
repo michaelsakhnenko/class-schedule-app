@@ -364,6 +364,11 @@ button.date-circle:active { transform: none; }
   .date-header { display: none; }
   .day-surface { touch-action: pan-y; }
   .week-surface { overflow-x: hidden; touch-action: pan-y; user-select: none; }
+  .mobile-week-surface { overflow: hidden; touch-action: auto; }
+  .mobile-week-track { display: flex; width: 300%; height: 100%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
+  .mobile-week-pane { flex: 0 0 33.333333%; min-width: 0; height: 100%; overflow: hidden; }
+  .mobile-week-native-scroll { width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: auto; }
+  .mobile-week-native-scroll::-webkit-scrollbar { display: none; }
   .week-surface .date-header { display: grid; grid-template-columns: 48px minmax(0, 1fr); min-height: 75px; flex-basis: 75px; }
   .week-surface .calendar-inner { min-width: 0; }
   .week-surface .date-header-days, .week-surface .day-tracks { grid-template-columns: repeat(var(--day-count), 136px); }
