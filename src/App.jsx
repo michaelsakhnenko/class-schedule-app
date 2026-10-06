@@ -525,6 +525,7 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
   const weekAdjustmentRef = useRef(null);
   const weekGestureRef = useRef(null);
   const weekAnimationRef = useRef(null);
+  const weekAnimationModeRef = useRef(null);
   const weekSettlingRef = useRef(false);
   const swipeStartRef = useRef(null);
   const suppressClickUntilRef = useRef(0);
@@ -580,6 +581,7 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
     if (isMobileWeek) return;
     if (weekAnimationRef.current) window.cancelAnimationFrame(weekAnimationRef.current);
     weekAnimationRef.current = null;
+    weekAnimationModeRef.current = null;
     weekGestureRef.current = null;
     weekSettlingRef.current = false;
   }, [isMobileWeek]);
@@ -664,9 +666,17 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
     settleCarousel(shouldChangeDay ? (distanceX < 0 ? 1 : -1) : 0);
   }
 
-  function animateWeekTo(target, onComplete) {
+  function stopWeekAnimation() {
+    if (weekAnimationRef.current) window.cancelAnimationFrame(weekAnimationRef.current);
+    weekAnimationRef.current = null;
+    weekAnimationModeRef.current = null;
+    weekSettlingRef.current = false;
+  }
+
+  function animateWeekTo(target, onComplete, mode = "settle") {
     const surface = weekSurfaceRef.current;
     if (!surface) return;
+    stopWeekAnimation();
     const start = surface.scrollLeft;
     const distance = target - start;
     const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 200;
@@ -676,6 +686,7 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
       return;
     }
     weekSettlingRef.current = true;
+    weekAnimationModeRef.current = mode;
     let startedAt = null;
     function frame(time) {
       if (startedAt === null) startedAt = time;
@@ -685,8 +696,38 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
         weekAnimationRef.current = window.requestAnimationFrame(frame);
       } else {
         weekAnimationRef.current = null;
+        weekAnimationModeRef.current = null;
         onComplete?.();
         weekSettlingRef.current = false;
+      }
+    }
+    weekAnimationRef.current = window.requestAnimationFrame(frame);
+  }
+
+  function coastWithinWeek(surface, velocity, leftBound, rightBound) {
+    const speed = Math.max(-3, Math.min(3, velocity));
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || Math.abs(speed) < 0.08) {
+      surface.scrollLeft = Math.max(leftBound, Math.min(rightBound, surface.scrollLeft));
+      selectVisibleWeekDay(surface);
+      return;
+    }
+    stopWeekAnimation();
+    weekSettlingRef.current = true;
+    weekAnimationModeRef.current = "coast";
+    const start = surface.scrollLeft;
+    const decay = -Math.log(0.995);
+    let startedAt = null;
+    function frame(time) {
+      if (startedAt === null) startedAt = time;
+      const elapsed = time - startedAt;
+      const projected = start + speed * (1 - Math.exp(-decay * elapsed)) / decay;
+      surface.scrollLeft = Math.max(leftBound, Math.min(rightBound, projected));
+      const atEdge = projected <= leftBound || projected >= rightBound;
+      if (!atEdge && Math.abs(speed * Math.exp(-decay * elapsed)) > 0.025 && elapsed < 1200) {
+        weekAnimationRef.current = window.requestAnimationFrame(frame);
+      } else {
+        stopWeekAnimation();
+        selectVisibleWeekDay(surface);
       }
     }
     weekAnimationRef.current = window.requestAnimationFrame(frame);
@@ -699,7 +740,7 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
     animateWeekTo(target, () => {
       weekAdjustmentRef.current = -direction * MOBILE_WEEK_WIDTH;
       flushSync(() => onWeekChange(addDays(mobileWeekStart, direction > 0 ? 7 : -1)));
-    });
+    }, "week-change");
   }
 
   function selectVisibleWeekDay(surface) {
@@ -710,7 +751,8 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
   }
 
   function handleWeekPointerDown(event) {
-    if (!isMobileWeek || weekSettlingRef.current || !event.isPrimary || (event.pointerType !== "touch" && event.pointerType !== "mouse")) return;
+    if (!isMobileWeek || weekAnimationModeRef.current === "week-change" || !event.isPrimary || (event.pointerType !== "touch" && event.pointerType !== "mouse")) return;
+    stopWeekAnimation();
     const surface = event.currentTarget;
     const leftBound = 48 + MOBILE_WEEK_WIDTH;
     const rightBound = leftBound + MOBILE_WEEK_WIDTH - surface.clientWidth;
@@ -724,6 +766,7 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
       canPrevious: surface.scrollLeft <= leftBound + 2 && mobileWeekStart > firstCalendarWeek,
       canNext: surface.scrollLeft >= rightBound - 2 && mobileWeekStart < lastCalendarWeek,
       axis: null,
+      samples: [{ left: surface.scrollLeft, at: performance.now() }],
     };
   }
 
@@ -741,6 +784,9 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
     const minimum = gesture.canPrevious ? gesture.leftBound - surface.clientWidth : gesture.leftBound;
     const maximum = gesture.canNext ? gesture.rightBound + surface.clientWidth : gesture.rightBound;
     surface.scrollLeft = Math.max(minimum, Math.min(maximum, gesture.scrollLeft - distanceX));
+    const now = performance.now();
+    gesture.samples.push({ left: surface.scrollLeft, at: now });
+    gesture.samples = gesture.samples.filter((sample) => now - sample.at <= 100);
   }
 
   function finishWeekPointer(event, cancelled = false) {
@@ -756,7 +802,11 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
     } else if (!cancelled && gesture.canPrevious && gesture.leftBound - surface.scrollLeft >= threshold) {
       changeMobileWeek(-1, surface);
     } else {
-      animateWeekTo(Math.max(gesture.leftBound, Math.min(gesture.rightBound, surface.scrollLeft)), () => selectVisibleWeekDay(surface));
+      const last = gesture.samples.at(-1);
+      const first = gesture.samples[0];
+      const elapsed = Math.max(1, last.at - first.at);
+      const velocity = !cancelled && performance.now() - last.at < 80 ? (last.left - first.left) / elapsed : 0;
+      coastWithinWeek(surface, velocity, gesture.leftBound, gesture.rightBound);
     }
   }
 
@@ -768,8 +818,9 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobi
       aria-label={isMobileWeek ? "Kalendarz tygodniowy" : undefined}
       tabIndex={isMobileWeek ? 0 : undefined}
       onKeyDown={(event) => {
-        if (!isMobileWeek || weekSettlingRef.current || event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        if (!isMobileWeek || weekAnimationModeRef.current === "week-change" || event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault();
+        stopWeekAnimation();
         const surface = event.currentTarget;
         const leftBound = 48 + MOBILE_WEEK_WIDTH;
         const rightBound = leftBound + MOBILE_WEEK_WIDTH - surface.clientWidth;
