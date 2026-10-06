@@ -14,6 +14,7 @@ export const SOURCE_PLAN_URL = "https://harmonogram.krakow.ideis.pl/Plany/PlanyT
  * @property {string} instructor
  * @property {string} notes
  * @property {string} sourceUrl
+ * @property {"cancelled"} [status] - Removed from the current source timetable
  */
 
 export const CLASS_TYPES = {
@@ -30,6 +31,10 @@ export function getEventType(event) {
 export function getEventTypeLabel(event) {
   const type = getEventType(event);
   return type === "other" && event.typeLabel?.trim() ? event.typeLabel.trim() : CLASS_TYPES[type].label;
+}
+
+export function isCancelled(event) {
+  return event.status === "cancelled";
 }
 
 export function isLanguageGroup(group) {

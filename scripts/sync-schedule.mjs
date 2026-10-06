@@ -4,10 +4,12 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { reconcileSchedule } from "./reconcile-schedule.mjs";
 
 const PLAN_ID = "1000";
 const SOURCE_URL = `https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/${PLAN_ID}`;
 const OUTPUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../public/schedule.json");
+const STATUS_OUTPUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../public/sync-status.json");
 const FORM_TYPES = { Wyk: "lecture", Cw: "exercise", Konw: "seminar" };
 
 function polishDateToISO(value) {
@@ -66,7 +68,7 @@ function validate(rows, events, start, end) {
 
 function validateCoverage(imported, previous, start, end) {
   if (previous?.sourceRange?.start !== start || previous?.sourceRange?.end !== end) return;
-  const previousCount = previous.events.filter((event) => event.date >= start && event.date <= end).length;
+  const previousCount = previous.events.filter((event) => event.status !== "cancelled" && event.date >= start && event.date <= end).length;
   if (previousCount >= 20 && imported.length < previousCount * 0.6) {
     throw new Error(`The full-semester grid returned only ${imported.length} classes; the previous snapshot had ${previousCount}. Keeping the published snapshot until the source can be checked.`);
   }
@@ -78,6 +80,19 @@ async function readPrevious() {
     if (error.code === "ENOENT") return null;
     throw error;
   }
+}
+
+async function writeSyncStatus(checkedAt, changedAt, start, end, sourceRows) {
+  const status = {
+    planId: PLAN_ID,
+    checkedAt,
+    changedAt,
+    sourceRange: { start, end },
+    sourceRows,
+  };
+  const temporary = `${STATUS_OUTPUT}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(status, null, 2)}\n`, "utf8");
+  await rename(temporary, STATUS_OUTPUT);
 }
 
 async function main() {
@@ -145,13 +160,12 @@ async function main() {
   validate(rows, imported, start, end);
   const previous = await readPrevious();
   validateCoverage(imported, previous, start, end);
-  const preserved = (previous?.events ?? []).filter((event) => event.date < start || event.date > end);
-  const events = [...preserved, ...imported].sort((a, b) =>
-    a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.group.localeCompare(b.group) || a.title.localeCompare(b.title)
-  );
+  const events = reconcileSchedule(previous?.events ?? [], imported, start, end);
   const sameEvents = JSON.stringify(previous?.events) === JSON.stringify(events);
   const sameRange = previous?.sourceRange?.start === start && previous?.sourceRange?.end === end;
+  const checkedAt = new Date().toISOString();
   if (sameEvents && sameRange) {
+    await writeSyncStatus(checkedAt, previous.publishedAt, start, end, imported.length);
     console.log(`Schedule unchanged: ${imported.length} source rows (${start}–${end}).`);
     return;
   }
@@ -160,13 +174,14 @@ async function main() {
     planId: PLAN_ID,
     sourceUrl: SOURCE_URL,
     sourceRange: { start, end },
-    publishedAt: new Date().toISOString(),
+    publishedAt: checkedAt,
     events,
   };
   await mkdir(path.dirname(OUTPUT), { recursive: true });
   const temporary = `${OUTPUT}.tmp`;
   await writeFile(temporary, `${JSON.stringify(result, null, 2)}\n`, "utf8");
   await rename(temporary, OUTPUT);
+  await writeSyncStatus(checkedAt, checkedAt, start, end, imported.length);
   console.log(`Published ${events.length} classes (${imported.length} from ${start}–${end}).`);
 }
 

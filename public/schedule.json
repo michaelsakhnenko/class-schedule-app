@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-10-06T09:52:06.539Z",
+  "publishedAt": "2026-10-06T09:58:46.600Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -71,6 +71,20 @@
       "instructor": "dr Robert Szydło",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+    },
+    {
+      "id": "46d54671bcb32c9b5904",
+      "date": "2026-10-06",
+      "startTime": "11:45",
+      "endTime": "14:45",
+      "title": "Metodyka opracowania dokumentacji projektowej",
+      "type": "exercise",
+      "group": "cw/3/ZS",
+      "room": "F San Diego",
+      "instructor": "prof. IDEIS dr inż. Zbigniew Handzel",
+      "notes": "",
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000",
+      "status": "cancelled"
     },
     {
       "id": "8b278bf2bb9d22605b18",

@@ -6,6 +6,7 @@ import {
   CaretLeft,
   CaretRight,
   Clock,
+  Info,
   MapPin,
   Moon,
   SidebarSimple,
@@ -14,7 +15,8 @@ import {
   User,
   X,
 } from "@phosphor-icons/react";
-import { filterByLanguageGroup, formatLanguageGroup, getEventType, getEventTypeLabel, getLanguageGroups, getSchedule } from "./data/schedule.js";
+import { filterByLanguageGroup, formatLanguageGroup, getEventType, getEventTypeLabel, getLanguageGroups, getSchedule, isCancelled } from "./data/schedule.js";
+import { assessSyncStatus, formatSyncTime, getLatestWorkflowRun, getSyncHeartbeat, WORKFLOW_URL } from "./data/syncStatus.js";
 import {
   addDays,
   classCountLabel,
@@ -138,7 +140,33 @@ function GroupFilter({ groups, value, onChange, id }) {
   );
 }
 
-function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange }) {
+function SyncStatusDetails({ heartbeat, latestRun, historyLoading, historyError, health }) {
+  const label = {
+    current: "Sprawdzono niedawno",
+    delayed: "Sprawdzenie opóźnione",
+    failed: "Ostatnia próba nieudana",
+    running: "Sprawdzanie trwa",
+    unknown: "Status niedostępny",
+  }[health];
+
+  return (
+    <section className="sync-details" aria-label="Synchronizacja planu">
+      <div className="sync-details-heading"><span>Synchronizacja</span><span className={`sync-state sync-state-${health}`}>{label}</span></div>
+      <dl>
+        <div><dt>Ostatnie udane sprawdzenie</dt><dd>{formatSyncTime(heartbeat?.checkedAt)}</dd></div>
+        <div><dt>Ostatnia zmiana planu</dt><dd>{formatSyncTime(heartbeat?.changedAt)}</dd></div>
+        {latestRun && latestRun.created_at > (heartbeat?.checkedAt ?? "") && <div><dt>Ostatnia próba</dt><dd>{formatSyncTime(latestRun.created_at)}</dd></div>}
+      </dl>
+      {health === "delayed" && <p>Nie było udanego sprawdzenia od ponad 95 minut.</p>}
+      {health === "failed" && <p>Plan może być nieaktualny. Ostatnia próba synchronizacji zakończyła się błędem.</p>}
+      {historyLoading && <p>Sprawdzanie historii uruchomień…</p>}
+      {historyError && <p>Nie można sprawdzić historii uruchomień.</p>}
+      <a href={WORKFLOW_URL} target="_blank" rel="noreferrer">Historia synchronizacji</a>
+    </section>
+  );
+}
+
+function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange, syncDetails, syncWarning, onOpenStatus }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
@@ -176,9 +204,10 @@ function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange }) 
         aria-label="Ustawienia kalendarza"
         aria-controls={open ? "mobile-settings-popover" : undefined}
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => { if (!open) onOpenStatus(); setOpen((current) => !current); }}
       >
         <SlidersHorizontal size={20} weight="regular" aria-hidden="true" />
+        {syncWarning && <span className="sync-warning-dot" aria-hidden="true" />}
       </button>
       {open && (
         <div className="mobile-settings-popover" id="mobile-settings-popover">
@@ -198,8 +227,41 @@ function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange }) 
               {theme === "dark" ? "Włącz jasny" : "Włącz ciemny"}
             </button>
           </div>
+          {syncDetails}
         </div>
       )}
+    </div>
+  );
+}
+
+function DesktopSyncStatus({ syncDetails, syncWarning, onOpenStatus }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePress = (event) => { if (!rootRef.current?.contains(event.target)) setOpen(false); };
+    const closeOnEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="desktop-sync-status" ref={rootRef}>
+      <button className="sync-trigger icon-button" ref={triggerRef} type="button" aria-label="Status synchronizacji planu" aria-expanded={open} aria-controls={open ? "desktop-sync-popover" : undefined} onClick={() => { if (!open) onOpenStatus(); setOpen((current) => !current); }}>
+        <Info size={20} weight="regular" aria-hidden="true" />
+        {syncWarning && <span className="sync-warning-dot" aria-hidden="true" />}
+      </button>
+      {open && <div className="desktop-sync-popover" id="desktop-sync-popover">{syncDetails}</div>}
     </div>
   );
 }
@@ -208,7 +270,7 @@ function ViewSwitch({ view, onChange, className = "" }) {
   return (
     <div className={`view-switch ${className}`} role="group" aria-label="Widok kalendarza" data-view={view}>
       <span className="view-indicator" aria-hidden="true" />
-      <button className={view === "day" ? "active" : ""} type="button" aria-pressed={view === "day"} onClick={() => onChange("day")}>Dzień</button>
+      <button className={view === "day" ? "active" : ""} type="button" aria-pressed={view === "day"} aria-label={view === "day" ? "Dzień — wróć do dzisiaj" : undefined} onClick={() => onChange("day")}>Dzień</button>
       <button className={view === "week" ? "active" : ""} type="button" aria-pressed={view === "week"} onClick={() => onChange("week")}>Tydzień</button>
       <button className={view === "month" ? "active" : ""} type="button" aria-pressed={view === "month"} onClick={() => onChange("month")}>Miesiąc</button>
     </div>
@@ -253,23 +315,24 @@ function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick })
         <div className="month-cells" style={{ "--week-count": days.length / 7 }}>
           {days.map((day) => {
             const dayEvents = eventsByDay.get(day) ?? [];
+            const previewEvents = [...dayEvents].sort((a, b) => Number(isCancelled(a)) - Number(isCancelled(b)));
             return (
               <div className={`month-cell${day.slice(0, 7) !== currentMonth ? " is-outside" : ""}${isWeekend(day) ? " is-weekend" : ""}${isMobile && day === selectedDay ? " is-selected" : ""}`} key={day}>
                 {isMobile
                   ? <button className={`month-date date-circle${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}`} type="button" aria-label={formatFullDate(day)} aria-current={day === today ? "date" : undefined} aria-pressed={day === selectedDay} onClick={() => onSelectDay(day)}>{parseDay(day).getUTCDate()}</button>
                   : <time className={`month-date is-static${day === today ? " is-today" : ""}`} dateTime={day} aria-current={day === today ? "date" : undefined}>{parseDay(day).getUTCDate()}</time>}
                 <div className="month-event-list">
-                  {dayEvents.slice(0, 3).map((event) => <button className={`month-event type-${getEventType(event)}`} type="button" key={event.id} aria-label={`${event.title}, ${getEventTypeLabel(event)}, ${event.startTime}`} onClick={() => onEventClick(event)}><span>{event.startTime}</span><strong>{event.title}</strong></button>)}
+                  {previewEvents.slice(0, 3).map((event) => <button className={`month-event type-${getEventType(event)}${isCancelled(event) ? " is-cancelled" : ""}`} type="button" key={event.id} aria-label={`${event.title}, ${isCancelled(event) ? "Odwołane, " : ""}${getEventTypeLabel(event)}, ${event.startTime}`} onClick={() => onEventClick(event)}><span className="month-event-time">{event.startTime}</span><span className="month-event-label"><strong>{event.title}</strong>{isCancelled(event) && <small>Odwołane</small>}</span></button>)}
                   {dayEvents.length > 3 && <span className="month-more">+{dayEvents.length - 3} więcej</span>}
                 </div>
-                <div className="month-dots" aria-hidden="true">{dayEvents.slice(0, 4).map((event) => <i className={`month-dot type-${getEventType(event)}`} key={event.id} />)}</div>
+                <div className="month-dots" aria-hidden="true">{previewEvents.slice(0, 4).map((event) => <i className={`month-dot type-${getEventType(event)}${isCancelled(event) ? " is-cancelled" : ""}`} key={event.id} />)}</div>
               </div>
             );
           })}
         </div>
         <section className="month-agenda" aria-label={`Zajęcia: ${formatFullDate(selectedDay)}`}>
           <h2>{formatFullDate(selectedDay)}</h2>
-          {selectedEvents.length ? selectedEvents.map((event) => <button className={`month-agenda-event type-${getEventType(event)}`} type="button" key={event.id} onClick={() => onEventClick(event)}><strong>{event.title}</strong><span className="month-agenda-time"><Clock size={14} aria-hidden="true" />{event.startTime}–{event.endTime}</span><small className="month-agenda-room"><MapPin size={14} aria-hidden="true" />{event.room}</small></button>) : <p>Brak zajęć w tym dniu</p>}
+          {selectedEvents.length ? selectedEvents.map((event) => <button className={`month-agenda-event type-${getEventType(event)}${isCancelled(event) ? " is-cancelled" : ""}`} type="button" key={event.id} aria-label={`${event.title}, ${isCancelled(event) ? "Odwołane, " : ""}${event.startTime}–${event.endTime}`} onClick={() => onEventClick(event)}><strong>{event.title}</strong>{isCancelled(event) && <span className="event-status">Odwołane</span>}<span className="month-agenda-time"><Clock size={14} aria-hidden="true" />{event.startTime}–{event.endTime}</span><small className="month-agenda-room"><MapPin size={14} aria-hidden="true" />{event.room}</small></button>) : <p>Brak zajęć w tym dniu</p>}
         </section>
       </div>
     </div>
@@ -285,13 +348,14 @@ function EventCard({ event, column, columns, onClick }) {
 
   return (
     <button
-      className={`event-card type-${getEventType(event)}`}
+      className={`event-card type-${getEventType(event)}${isCancelled(event) ? " is-cancelled" : ""}`}
       type="button"
       style={{ top: `${top + 4}px`, height: `${Math.max(height - 8, 48)}px`, left: `calc(${column * width}% + 4px)`, width: `calc(${width}% - 8px)` }}
-      aria-label={`${event.title}, ${event.startTime}–${event.endTime}, ${event.room}, ${getEventTypeLabel(event)}`}
+      aria-label={`${event.title}, ${isCancelled(event) ? "Odwołane, " : ""}${event.startTime}–${event.endTime}, ${event.room}, ${getEventTypeLabel(event)}`}
       onClick={() => onClick(event)}
     >
       <strong className="event-title">{event.title}</strong>
+      {isCancelled(event) && <span className="event-status">Odwołane</span>}
       <span className="event-time"><Clock size={12} aria-hidden="true" /><span>{event.startTime}–{event.endTime}</span></span>
       <span className="event-room"><MapPin size={12} aria-hidden="true" /><span>{event.room}</span></span>
     </button>
@@ -483,7 +547,7 @@ function EventDialog({ event, onClose }) {
   if (!event) return null;
 
   return (
-    <dialog className="event-dialog" ref={dialogRef} aria-labelledby="event-dialog-title" onClick={(e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }}>
+    <dialog className={`event-dialog${isCancelled(event) ? " is-cancelled" : ""}`} ref={dialogRef} aria-labelledby="event-dialog-title" onClick={(e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }}>
       <div className="dialog-content">
         <button className="dialog-close icon-button" type="button" aria-label="Zamknij szczegóły" onClick={() => dialogRef.current?.close()}><X size={16} /></button>
         <h2 id="event-dialog-title">{event.title}</h2>
@@ -492,9 +556,11 @@ function EventDialog({ event, onClose }) {
         <div className="dialog-detail"><MapPin size={16} /><span>{event.room}</span></div>
         <div className="dialog-detail"><User size={16} /><span>{event.instructor}</span></div>
         <div className="dialog-badges">
+          {isCancelled(event) && <span className="dialog-cancelled">Odwołane</span>}
           <span className={`dialog-category type-${getEventType(event)}`}>{getEventTypeLabel(event)}</span>
           <span className="dialog-group">{event.group}</span>
         </div>
+        {isCancelled(event) && <p className="dialog-cancelled-note">Tych zajęć nie ma w aktualnym planie uczelni.</p>}
       </div>
     </dialog>
   );
@@ -518,6 +584,12 @@ export function App() {
   });
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [now, setNow] = useState(currentWarsawTime);
+  const [syncHeartbeat, setSyncHeartbeat] = useState(null);
+  const [syncHeartbeatLoaded, setSyncHeartbeatLoaded] = useState(false);
+  const [latestSyncRun, setLatestSyncRun] = useState(null);
+  const [syncHistoryLoading, setSyncHistoryLoading] = useState(false);
+  const [syncHistoryError, setSyncHistoryError] = useState(false);
+  const lastHistoryFetch = useRef(0);
   const closeEvent = useCallback(() => setSelectedEvent(null), []);
 
   useEffect(() => {
@@ -554,13 +626,36 @@ export function App() {
         if (active) { setLoadError(true); setLoading(false); }
       }
     }
+    async function loadHeartbeat() {
+      try {
+        const status = await getSyncHeartbeat();
+        if (active) { setSyncHeartbeat(status); setSyncHeartbeatLoaded(true); }
+      } catch {
+        if (active) { setSyncHeartbeat(null); setSyncHeartbeatLoaded(true); }
+      }
+    }
     load();
+    loadHeartbeat();
     const clockTimer = window.setInterval(() => setNow(currentWarsawTime()), 60000);
-    const refreshTimer = window.setInterval(load, 10 * 60 * 1000);
-    const refreshOnFocus = () => { if (document.visibilityState === "visible") load(); };
+    const refreshTimer = window.setInterval(() => { load(); loadHeartbeat(); }, 10 * 60 * 1000);
+    const refreshOnFocus = () => { if (document.visibilityState === "visible") { load(); loadHeartbeat(); } };
     document.addEventListener("visibilitychange", refreshOnFocus);
     return () => { active = false; window.clearInterval(clockTimer); window.clearInterval(refreshTimer); document.removeEventListener("visibilitychange", refreshOnFocus); };
   }, [retryKey]);
+
+  const loadSyncHistory = useCallback(async () => {
+    if (Date.now() - lastHistoryFetch.current < 60_000) return;
+    lastHistoryFetch.current = Date.now();
+    setSyncHistoryLoading(true);
+    setSyncHistoryError(false);
+    try { setLatestSyncRun(await getLatestWorkflowRun()); }
+    catch { setSyncHistoryError(true); }
+    finally { setSyncHistoryLoading(false); }
+  }, []);
+
+  const syncHealth = assessSyncStatus(syncHeartbeat, latestSyncRun, Date.now());
+  const syncWarning = syncHealth === "failed" || syncHealth === "delayed" || (syncHeartbeatLoaded && syncHealth === "unknown");
+  const syncDetails = <SyncStatusDetails heartbeat={syncHeartbeat} latestRun={latestSyncRun} historyLoading={syncHistoryLoading} historyError={syncHistoryError} health={syncHealth} />;
 
   const today = todayISO();
   const languageGroups = useMemo(() => getLanguageGroups(allEvents), [allEvents]);
@@ -570,9 +665,9 @@ export function App() {
   const currentWeek = useMemo(() => weekDays(selectedDay), [selectedDay]);
   const weeklyClasses = useMemo(() => events.filter((event) => currentWeek.includes(event.date)), [events, currentWeek]);
   const monthlyClasses = useMemo(() => events.filter((event) => event.date.slice(0, 7) === selectedDay.slice(0, 7)), [events, selectedDay]);
-  const classDates = useMemo(() => new Set(events.map((event) => event.date)), [events]);
+  const classDates = useMemo(() => new Set(events.filter((event) => !isCancelled(event)).map((event) => event.date)), [events]);
   const visibleClasses = useMemo(() => events.filter((event) => days.includes(event.date)), [events, days]);
-  const displayedCount = view === "month" ? monthlyClasses.length : visibleClasses.length;
+  const displayedCount = (view === "month" ? monthlyClasses : visibleClasses).filter((event) => !isCancelled(event)).length;
   const showToolbarDate = view === "week" || (view === "day" && !isMobile);
   const titleDay = view === "week" ? startOfWeek(selectedDay) : selectedDay;
   const [titleMonth, titleYear] = formatMonth(titleDay).split(" ");
@@ -580,6 +675,11 @@ export function App() {
   function selectDay(day) {
     setSelectedDay(day);
     setMiniMonth(day);
+  }
+
+  function selectView(nextView) {
+    if (nextView === "day" && view === "day") selectDay(todayISO());
+    else setView(nextView);
   }
 
   function navigate(amount) {
@@ -617,8 +717,9 @@ export function App() {
             <SidebarSimple size={16} />
           </button>
           {languageGroups.length > 0 && <div className="collapsed-group-filter"><GroupFilter groups={languageGroups} value={activeGroup} onChange={chooseGroup} id="collapsed-language-group" /></div>}
-          <ViewSwitch view={view} onChange={setView} className="desktop-view-switch" />
+          <ViewSwitch view={view} onChange={selectView} className="desktop-view-switch" />
           <div className="topbar-right">
+            <DesktopSyncStatus syncDetails={syncDetails} syncWarning={syncWarning} onOpenStatus={loadSyncHistory} />
             <button
               className="theme-toggle icon-button"
               type="button"
@@ -643,9 +744,11 @@ export function App() {
             onGroupChange={chooseGroup}
             theme={theme}
             onThemeChange={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+            syncDetails={syncDetails}
+            syncWarning={syncWarning}
+            onOpenStatus={loadSyncHistory}
           />}
           <div className="toolbar-actions">
-            <button className="today-button" type="button" onClick={() => selectDay(todayISO())}><span className="control-face">Dzisiaj</span></button>
             <div className="nav-buttons">
               <button className="icon-button" type="button" aria-label={view === "month" ? "Poprzedni miesiąc" : view === "week" ? "Poprzedni tydzień" : "Poprzedni dzień"} onClick={() => navigate(-1)}><span className="control-face"><CaretLeft size={16} /></span></button>
               <button className="icon-button" type="button" aria-label={view === "month" ? "Następny miesiąc" : view === "week" ? "Następny tydzień" : "Następny dzień"} onClick={() => navigate(1)}><span className="control-face"><CaretRight size={16} /></span></button>
@@ -656,7 +759,7 @@ export function App() {
           {currentWeek.map((day) => <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => selectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button>)}
         </div>}
         <div className="calendar-wrapper">
-          <ViewSwitch view={view} onChange={setView} className="mobile-view-switch" />
+          <ViewSwitch view={view} onChange={selectView} className="mobile-view-switch" />
           {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile && view === "day" ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} />}
         </div>
       </main>
