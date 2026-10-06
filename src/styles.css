@@ -331,7 +331,7 @@ button.date-circle:active { transform: none; }
   .mobile-theme-icon-wrap { position: relative; width: 20px; height: 20px; flex: 0 0 20px; }
   .desktop-view-switch { display: none; }
   .calendar-wrapper { position: relative; }
-  .mobile-view-switch { position: absolute; z-index: 10; left: 50%; bottom: calc(21px + env(safe-area-inset-bottom, 0px)); display: grid; width: 280px; height: 62px; padding: 4px; border-color: var(--floating-switch-border); border-radius: 999px; background: var(--floating-switch-bg); transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+  .mobile-view-switch { position: absolute; z-index: 10; left: 50%; bottom: 21px; display: grid; width: 280px; height: 62px; padding: 4px; border-color: var(--floating-switch-border); border-radius: 999px; background: var(--floating-switch-bg); transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
   :root[data-theme="light"] .mobile-view-switch { box-shadow: 0 8px 24px rgba(40, 35, 25, .1); }
   .mobile-view-switch .view-indicator { height: 52px; border-radius: 999px; background: var(--floating-switch-selected-bg); }
   .mobile-view-switch button { min-height: 52px; padding: 8px 6px; border-radius: 999px; font-size: 14px; }
@@ -360,6 +360,7 @@ button.date-circle:active { transform: none; }
   .mobile-date-strip button.selected strong { color: var(--on-accent); }
   .date-header { display: none; }
   .day-surface { touch-action: pan-y; }
+  .week-surface { touch-action: pan-y; user-select: none; }
   .week-surface .date-header { display: grid; grid-template-columns: 48px minmax(0, 1fr); min-height: 75px; flex-basis: 75px; }
   .week-surface .calendar-inner { min-width: 0; }
   .week-surface .date-header-days, .week-surface .day-tracks { grid-template-columns: repeat(var(--day-count), 136px); }

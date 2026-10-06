@@ -61,6 +61,9 @@ export async function getSchedule() {
   const response = await fetch(`${import.meta.env.BASE_URL}schedule.json`, { cache: "no-cache" });
   if (!response.ok) throw new Error(`Could not load schedule (${response.status}).`);
   const snapshot = await response.json();
-  if (snapshot.planId !== "1000" || !Array.isArray(snapshot.events)) throw new Error("Invalid schedule snapshot.");
-  return snapshot.events;
+  const range = snapshot.sourceRange;
+  if (snapshot.planId !== "1000" || !Array.isArray(snapshot.events) || !/^\d{4}-\d{2}-\d{2}$/.test(range?.start) || !/^\d{4}-\d{2}-\d{2}$/.test(range?.end) || range.start > range.end) {
+    throw new Error("Invalid schedule snapshot.");
+  }
+  return { events: snapshot.events, sourceRange: range };
 }
