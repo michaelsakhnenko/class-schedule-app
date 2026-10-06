@@ -114,7 +114,7 @@ button.date-circle:active { transform: none; }
 .group-filter select { appearance: none; width: 100%; min-width: 0; min-height: 36px; padding: 0 36px 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-raised); color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer; }
 :root[data-input-modality="keyboard"] .group-filter select:focus-visible { border-color: var(--focus-indicator); }
 .group-filter-control > svg { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
-.mobile-settings { display: none; }
+.mobile-settings, .mobile-header-actions { display: none; }
 
 .main-area { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: column; background: var(--page); }
 .topbar { height: 48px; flex: 0 0 48px; display: flex; justify-content: center; align-items: center; position: relative; padding: 0 24px; }
@@ -136,12 +136,12 @@ button.date-circle:active { transform: none; }
 .view-switch button.active { color: var(--text); }
 .mobile-view-switch { display: none; }
 .topbar-right { position: absolute; right: 24px; display: flex; align-items: center; gap: 16px; }
-.desktop-sync-status { position: relative; }
+.sync-status-control { position: relative; }
 .sync-trigger { position: relative; width: 40px; height: 40px; border: 0; background: transparent; }
 .sync-trigger:hover { border: 0; background: transparent; }
 .sync-warning-dot { position: absolute; top: 6px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.desktop-sync-popover { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; width: 304px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 16px 40px rgba(0,0,0,.32); animation: settings-enter 150ms var(--ease-out) both; }
-:root[data-theme="light"] .desktop-sync-popover { box-shadow: 0 16px 40px rgba(50,44,38,.14); }
+.sync-status-popover { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; width: 304px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 16px 40px rgba(0,0,0,.32); animation: settings-enter 150ms var(--ease-out) both; }
+:root[data-theme="light"] .sync-status-popover { box-shadow: 0 16px 40px rgba(50,44,38,.14); }
 .sync-details { display: grid; gap: 12px; font-size: 12px; line-height: 1.4; }
 .sync-details-heading { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
 .sync-state { color: var(--muted); font-size: 12px; font-weight: 500; }
@@ -151,8 +151,6 @@ button.date-circle:active { transform: none; }
 .sync-details dt { color: var(--muted); }
 .sync-details dd { margin: 0; color: var(--text-secondary); text-align: right; white-space: nowrap; }
 .sync-details p { margin: 0; color: var(--muted); }
-.sync-details a { width: fit-content; color: var(--text-secondary); text-decoration: underline; text-decoration-color: var(--subtle); text-underline-offset: 3px; }
-.sync-details a:hover { color: var(--text); }
 @keyframes settings-enter { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .theme-toggle { width: 40px; height: 40px; position: relative; background: transparent; border: 0; transition: color 150ms ease-out, transform 150ms ease-out; }
 .theme-toggle:hover { background: transparent; border: 0; color: var(--text); }
@@ -178,6 +176,8 @@ button.date-circle:active { transform: none; }
 .calendar-error { align-content: center; gap: 12px; }
 .calendar-error button { min-height: 36px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-raised); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; }
 .calendar-surface { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; scrollbar-color: var(--scroll-thumb) transparent; }
+.calendar-surface:focus, .month-carousel-viewport:focus { outline: none; }
+:root[data-input-modality="keyboard"] .calendar-surface:focus-visible, :root[data-input-modality="keyboard"] .month-carousel-viewport:focus-visible { outline: 1px solid var(--focus-indicator); outline-offset: -2px; }
 .calendar-inner { height: 100%; display: flex; flex-direction: column; min-width: 0; }
 .date-header { display: grid; grid-template-columns: 64px minmax(0,1fr); min-height: 48px; border-bottom: 1px solid var(--line); flex: 0 0 48px; }
 .date-header-days { display: grid; grid-template-columns: repeat(var(--day-count), minmax(0,1fr)); padding-top: 8px; }
@@ -214,13 +214,13 @@ button.date-circle:active { transform: none; }
 .event-time svg, .event-room svg { flex: 0 0 12px; }
 .event-time span, .event-room span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .event-status { margin-top: 4px; color: var(--cancel-text); font-size: 12px; line-height: 1.2; font-weight: 600; }
-.type-lecture { --event-bg: #1c3851; --event-border: #61aaf0; --event-text: #d0e9ff; }
+.type-lecture { --event-bg: #372b46; --event-border: #ba93e9; --event-text: #e1cbff; }
 .type-exercise { --event-bg: #2b392c; --event-border: #8fbd8b; --event-text: #d5ebd0; }
-.type-seminar { --event-bg: #372b46; --event-border: #ba93e9; --event-text: #e1cbff; }
+.type-seminar { --event-bg: #1c3851; --event-border: #61aaf0; --event-text: #d0e9ff; }
 .type-other { --event-bg: #422b37; --event-border: #e992b3; --event-text: #ffd1e1; }
-:root[data-theme="light"] .type-lecture { --event-bg: #e8f2fa; --event-border: #5f96c1; --event-text: #315872; }
+:root[data-theme="light"] .type-lecture { --event-bg: #f1edf7; --event-border: #9b7eb2; --event-text: #604a70; }
 :root[data-theme="light"] .type-exercise { --event-bg: #edf4e9; --event-border: #719d72; --event-text: #3c6042; }
-:root[data-theme="light"] .type-seminar { --event-bg: #f1edf7; --event-border: #9b7eb2; --event-text: #604a70; }
+:root[data-theme="light"] .type-seminar { --event-bg: #e8f2fa; --event-border: #5f96c1; --event-text: #315872; }
 :root[data-theme="light"] .type-other { --event-bg: #f8edf1; --event-border: #bd849b; --event-text: #75495f; }
 .is-cancelled { --event-bg: #282828; --event-border: #777; --event-text: #bcbcbc; }
 :root[data-theme="light"] .is-cancelled { --event-bg: #efeeec; --event-border: #aaa6a0; --event-text: #77716b; }
@@ -234,6 +234,10 @@ button.date-circle:active { transform: none; }
 .now-line i { position: absolute; top: -5px; left: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 
 .month-surface { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.month-carousel-viewport { flex: 1; min-height: 0; overflow: hidden; touch-action: pan-y; user-select: none; }
+.month-carousel-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 300%; height: 100%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
+.month-carousel-pane { display: flex; flex-direction: column; min-width: 0; height: 100%; overflow: hidden; }
+.month-carousel-pane .month-surface { height: 100%; }
 .month-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); height: 32px; flex: 0 0 32px; border-bottom: 1px solid var(--line); }
 .month-weekdays > span { display: grid; place-items: center; border-left: 1px solid var(--line); color: var(--soft); font-size: 12px; font-weight: 600; }
 .month-weekdays > span:first-child { border-left: 0; }
@@ -300,16 +304,19 @@ button.date-circle:active { transform: none; }
 }
 
 @media (max-width: 760px) {
-  .app-shell { display: flex; min-height: 0; transition: none; }
+  .app-shell { display: flex; min-height: 0; padding-top: calc(env(safe-area-inset-top, 0px) + 16px); transition: none; }
   .sidebar { display: none; }
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .collapsed-group-filter { display: none; }
   .topbar { display: none; }
   .topbar-right { display: none; }
-  .mobile-settings { position: relative; z-index: 20; display: block; align-self: start; margin-top: -6px; }
+  .mobile-header-actions { display: flex; align-items: flex-start; justify-content: flex-end; width: 88px; margin-top: -6px; }
+  .mobile-header-actions .sync-status-control { z-index: 21; }
+  .mobile-header-actions .sync-trigger { width: 44px; height: 44px; }
+  .mobile-header-actions .sync-status-popover { right: -44px; width: min(304px, calc(100vw - 32px)); }
+  .mobile-settings { position: relative; z-index: 20; display: block; }
   .mobile-settings-trigger { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); cursor: pointer; }
   .mobile-settings-trigger:hover, .mobile-settings-trigger[aria-expanded="true"] { color: var(--text); }
-  .mobile-settings-trigger .sync-warning-dot { top: 6px; right: 4px; }
   .mobile-settings-popover { position: absolute; top: calc(100% + 6px); right: 0; width: min(280px, calc(100vw - 24px)); padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 16px 40px rgba(0, 0, 0, .32); animation: settings-enter 150ms var(--ease-out) both; }
   :root[data-theme="light"] .mobile-settings-popover { box-shadow: 0 16px 40px rgba(50, 44, 38, .14); }
   .mobile-settings-popover .group-filter { gap: 8px; }
@@ -322,7 +329,6 @@ button.date-circle:active { transform: none; }
   .mobile-theme-action:hover { background: var(--surface-hover); }
   .mobile-theme-action:active { transform: scale(.97); }
   .mobile-theme-icon-wrap { position: relative; width: 20px; height: 20px; flex: 0 0 20px; }
-  .mobile-settings-popover .sync-details { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
   .desktop-view-switch { display: none; }
   .calendar-wrapper { position: relative; }
   .mobile-view-switch { position: absolute; z-index: 10; left: 50%; bottom: calc(21px + env(safe-area-inset-bottom, 0px)); display: grid; width: 280px; height: 62px; padding: 4px; border-color: var(--floating-switch-border); border-radius: 999px; background: var(--floating-switch-bg); transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
@@ -330,13 +336,13 @@ button.date-circle:active { transform: none; }
   .mobile-view-switch .view-indicator { height: 52px; border-radius: 999px; background: var(--floating-switch-selected-bg); }
   .mobile-view-switch button { min-height: 52px; padding: 8px 6px; border-radius: 999px; font-size: 14px; }
   .timeline-scroll::after, .month-scroll::after { content: ""; display: block; height: calc(100px + env(safe-area-inset-bottom, 0px)); }
-  .calendar-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: start; column-gap: 8px; row-gap: 4px; min-height: 0; padding: 8px 16px 4px; }
+  .calendar-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) 88px; align-items: start; column-gap: 8px; min-height: 0; padding: 8px 16px 4px; }
   .calendar-heading { min-width: 0; }
   .calendar-heading h1 { font-size: 30px; white-space: nowrap; }
   .range-label { font-size: 12px; margin-top: 4px; max-width: 208px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .range-long { display: none; }
   .range-short { display: inline; }
-  .toolbar-actions { grid-column: 1 / -1; justify-content: flex-end; gap: 8px; width: 100%; margin-bottom: 0; }
+  .toolbar-actions { display: none; }
   .icon-button { width: 44px; height: 44px; border-radius: 8px; }
   .nav-buttons { gap: 4px; }
   .toolbar-actions .nav-buttons .icon-button { display: grid; place-items: center; padding: 0; border: 0; background: transparent; }
@@ -355,6 +361,8 @@ button.date-circle:active { transform: none; }
   .date-header { display: none; }
   .day-surface { touch-action: pan-y; }
   .week-surface .date-header { display: grid; grid-template-columns: 48px minmax(0, 1fr); min-height: 75px; flex-basis: 75px; }
+  .week-surface .calendar-inner { min-width: 0; }
+  .week-surface .date-header-days, .week-surface .day-tracks { grid-template-columns: repeat(var(--day-count), 136px); }
   .week-surface .date-header-days { padding-top: 16px; }
   .week-surface .date-header-day { flex-direction: column; gap: 4px; font-size: 12px; }
   .timeline-body { grid-template-columns: 48px minmax(0, 1fr); }
@@ -391,8 +399,11 @@ button.date-circle:active { transform: none; }
 }
 
 @media (max-width: 390px) {
-  .toolbar-actions { gap: 4px; }
   .event-title { font-size: 14px; }
+}
+
+@media (max-width: 359px) {
+  .calendar-heading h1 { font-size: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

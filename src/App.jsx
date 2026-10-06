@@ -16,7 +16,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { filterByLanguageGroup, formatLanguageGroup, getEventType, getEventTypeLabel, getLanguageGroups, getSchedule, isCancelled } from "./data/schedule.js";
-import { assessSyncStatus, formatSyncTime, getLatestWorkflowRun, getSyncHeartbeat, WORKFLOW_URL } from "./data/syncStatus.js";
+import { assessSyncStatus, formatSyncTime, getLatestWorkflowRun, getSyncHeartbeat } from "./data/syncStatus.js";
 import {
   addDays,
   classCountLabel,
@@ -40,6 +40,8 @@ const START_HOUR = 0;
 const END_HOUR = 24;
 const HOUR_HEIGHT = 78;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => START_HOUR + index);
+const MOBILE_WEEK_DAY_WIDTH = 136;
+const MOBILE_WEEK_WIDTH = MOBILE_WEEK_DAY_WIDTH * 7;
 
 function shiftMonth(day, amount) {
   const date = parseDay(day);
@@ -159,14 +161,13 @@ function SyncStatusDetails({ heartbeat, latestRun, historyLoading, historyError,
       </dl>
       {health === "delayed" && <p>Nie było udanego sprawdzenia od ponad 95 minut.</p>}
       {health === "failed" && <p>Plan może być nieaktualny. Ostatnia próba synchronizacji zakończyła się błędem.</p>}
-      {historyLoading && <p>Sprawdzanie historii uruchomień…</p>}
-      {historyError && <p>Nie można sprawdzić historii uruchomień.</p>}
-      <a href={WORKFLOW_URL} target="_blank" rel="noreferrer">Historia synchronizacji</a>
+      {historyLoading && <p>Sprawdzanie ostatniej próby…</p>}
+      {historyError && <p>Nie można sprawdzić ostatniej próby.</p>}
     </section>
   );
 }
 
-function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange, syncDetails, syncWarning, onOpenStatus }) {
+function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
@@ -204,10 +205,9 @@ function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange, sy
         aria-label="Ustawienia kalendarza"
         aria-controls={open ? "mobile-settings-popover" : undefined}
         aria-expanded={open}
-        onClick={() => { if (!open) onOpenStatus(); setOpen((current) => !current); }}
+        onClick={() => setOpen((current) => !current)}
       >
         <SlidersHorizontal size={20} weight="regular" aria-hidden="true" />
-        {syncWarning && <span className="sync-warning-dot" aria-hidden="true" />}
       </button>
       {open && (
         <div className="mobile-settings-popover" id="mobile-settings-popover">
@@ -227,14 +227,13 @@ function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange, sy
               {theme === "dark" ? "Włącz jasny" : "Włącz ciemny"}
             </button>
           </div>
-          {syncDetails}
         </div>
       )}
     </div>
   );
 }
 
-function DesktopSyncStatus({ syncDetails, syncWarning, onOpenStatus }) {
+function SyncStatusButton({ syncDetails, syncWarning, onOpenStatus, popoverId }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
@@ -256,12 +255,12 @@ function DesktopSyncStatus({ syncDetails, syncWarning, onOpenStatus }) {
   }, [open]);
 
   return (
-    <div className="desktop-sync-status" ref={rootRef}>
-      <button className="sync-trigger icon-button" ref={triggerRef} type="button" aria-label="Status synchronizacji planu" aria-expanded={open} aria-controls={open ? "desktop-sync-popover" : undefined} onClick={() => { if (!open) onOpenStatus(); setOpen((current) => !current); }}>
+    <div className="sync-status-control" ref={rootRef}>
+      <button className="sync-trigger icon-button" ref={triggerRef} type="button" aria-label="Status synchronizacji planu" aria-expanded={open} aria-controls={open ? popoverId : undefined} onClick={() => { if (!open) onOpenStatus(); setOpen((current) => !current); }}>
         <Info size={20} weight="regular" aria-hidden="true" />
         {syncWarning && <span className="sync-warning-dot" aria-hidden="true" />}
       </button>
-      {open && <div className="desktop-sync-popover" id="desktop-sync-popover">{syncDetails}</div>}
+      {open && <div className="sync-status-popover" id={popoverId}>{syncDetails}</div>}
     </div>
   );
 }
@@ -294,7 +293,7 @@ function Sidebar({ selectedDay, miniMonth, setMiniMonth, classDates, languageGro
   );
 }
 
-function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick }) {
+function MonthPage({ selectedDay, events, isMobile, onSelectDay, onEventClick }) {
   const days = useMemo(() => monthDays(selectedDay), [selectedDay]);
   const currentMonth = selectedDay.slice(0, 7);
   const today = todayISO();
@@ -339,6 +338,142 @@ function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick })
   );
 }
 
+function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick, onSwipeMonth }) {
+  const swipeStartRef = useRef(null);
+  const suppressClickUntilRef = useRef(0);
+  const viewportRef = useRef(null);
+  const trackRef = useRef(null);
+  const settleTimerRef = useRef(null);
+  const settlingRef = useRef(false);
+  const pageDays = useMemo(() => [shiftSelectedMonth(selectedDay, -1), selectedDay, shiftSelectedMonth(selectedDay, 1)], [selectedDay]);
+
+  useLayoutEffect(() => {
+    if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = null;
+    settlingRef.current = false;
+    const track = trackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = "translate3d(-33.333333%, 0, 0)";
+    }
+  }, [selectedDay, isMobile]);
+
+  useEffect(() => () => {
+    if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
+  }, []);
+
+  function settle(direction) {
+    const track = trackRef.current;
+    const width = viewportRef.current?.clientWidth;
+    if (!track || !width) return;
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220;
+    settlingRef.current = true;
+    track.style.transition = duration ? `transform ${duration}ms var(--ease-out)` : "none";
+    track.style.transform = `translate3d(calc(-33.333333% + ${-direction * width}px), 0, 0)`;
+    settleTimerRef.current = window.setTimeout(() => {
+      settleTimerRef.current = null;
+      if (direction) flushSync(() => onSwipeMonth(direction));
+      else {
+        track.style.transition = "none";
+        track.style.transform = "translate3d(-33.333333%, 0, 0)";
+        settlingRef.current = false;
+      }
+    }, duration + 16);
+  }
+
+  function handleTouchStart(event) {
+    if (event.touches.length !== 1 || settlingRef.current) {
+      swipeStartRef.current = null;
+      return;
+    }
+    swipeStartRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY, at: performance.now(), axis: null };
+  }
+
+  function moveSwipe(x, y) {
+    const start = swipeStartRef.current;
+    if (!start) return;
+    const distanceX = x - start.x;
+    const distanceY = y - start.y;
+    if (!start.axis && Math.max(Math.abs(distanceX), Math.abs(distanceY)) >= 8) {
+      start.axis = Math.abs(distanceX) > Math.abs(distanceY) * 1.2 ? "x" : "y";
+    }
+    if (start.axis !== "x") return;
+    const width = viewportRef.current?.clientWidth ?? 0;
+    const offset = Math.max(-width, Math.min(width, distanceX));
+    const track = trackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = `translate3d(calc(-33.333333% + ${offset}px), 0, 0)`;
+    }
+  }
+
+  function endSwipe(x, y) {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || start.axis === "y") return;
+    const distanceX = x - start.x;
+    const distanceY = y - start.y;
+    if (Math.abs(distanceX) < 12 || Math.abs(distanceX) < Math.abs(distanceY) * 1.2) {
+      if (start.axis === "x") settle(0);
+      return;
+    }
+    suppressClickUntilRef.current = performance.now() + 350;
+    const width = viewportRef.current?.clientWidth ?? 0;
+    const elapsed = Math.max(1, performance.now() - start.at);
+    const shouldChange = Math.abs(distanceX) >= Math.min(96, width * 0.25) || (Math.abs(distanceX) >= 32 && Math.abs(distanceX) / elapsed > 0.45);
+    settle(shouldChange ? (distanceX < 0 ? 1 : -1) : 0);
+  }
+
+  function handleTouchMove(event) {
+    if (event.touches.length === 1) moveSwipe(event.touches[0].clientX, event.touches[0].clientY);
+  }
+
+  function handleTouchEnd(event) {
+    const touch = event.changedTouches[0];
+    if (touch) endSwipe(touch.clientX, touch.clientY);
+  }
+
+  function handlePointerDown(event) {
+    if (event.pointerType !== "mouse" || event.button !== 0 || settlingRef.current) return;
+    swipeStartRef.current = { x: event.clientX, y: event.clientY, at: performance.now(), axis: null };
+  }
+
+  function handlePointerMove(event) {
+    if (event.pointerType === "mouse" && event.buttons === 1) moveSwipe(event.clientX, event.clientY);
+  }
+
+  function handlePointerUp(event) {
+    if (event.pointerType === "mouse") endSwipe(event.clientX, event.clientY);
+  }
+
+  if (!isMobile) return <MonthPage selectedDay={selectedDay} events={events} isMobile={false} onSelectDay={onSelectDay} onEventClick={onEventClick} />;
+
+  return (
+    <div className="month-carousel-viewport" ref={viewportRef} role="region" aria-label="Kalendarz miesięczny" tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        onSwipeMonth(event.key === "ArrowRight" ? 1 : -1);
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={() => { if (swipeStartRef.current?.axis === "x") settle(0); swipeStartRef.current = null; }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => { if (swipeStartRef.current?.axis === "x") settle(0); swipeStartRef.current = null; }}
+      onClickCapture={(event) => { if (performance.now() < suppressClickUntilRef.current) { event.preventDefault(); event.stopPropagation(); } }}
+    >
+      <div className="month-carousel-track" ref={trackRef}>
+        {pageDays.map((day) => <div className="month-carousel-pane" key={day} inert={day !== selectedDay} aria-hidden={day !== selectedDay}>
+          <MonthPage selectedDay={day} events={events} isMobile onSelectDay={onSelectDay} onEventClick={onEventClick} />
+        </div>)}
+      </div>
+    </div>
+  );
+}
+
 function EventCard({ event, column, columns, onClick }) {
   const start = minutes(event.startTime);
   const end = minutes(event.endTime);
@@ -362,8 +497,11 @@ function EventCard({ event, column, columns, onClick }) {
   );
 }
 
-function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, onEventClick, onSwipeDay }) {
+function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, isMobileWeek, now, onEventClick, onSwipeDay, onWeekChange }) {
   const scrollRef = useRef(null);
+  const weekSurfaceRef = useRef(null);
+  const weekAdjustmentRef = useRef(null);
+  const [weekWindowStart, setWeekWindowStart] = useState(() => addDays(startOfWeek(selectedDay), -14));
   const swipeStartRef = useRef(null);
   const suppressClickUntilRef = useRef(0);
   const carouselViewportRef = useRef(null);
@@ -373,7 +511,12 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
   const today = todayISO();
   const currentTimePosition = ((now.hour * 60 + now.minute - START_HOUR * 60) / 60) * HOUR_HEIGHT;
   const showCurrentTime = currentTimePosition >= 0 && currentTimePosition <= (END_HOUR - START_HOUR) * HOUR_HEIGHT;
-  const renderedDays = useMemo(() => isMobileDay ? [addDays(selectedDay, -1), selectedDay, addDays(selectedDay, 1)] : days, [days, isMobileDay, selectedDay]);
+  const renderedDays = useMemo(() => isMobileDay
+    ? [addDays(selectedDay, -1), selectedDay, addDays(selectedDay, 1)]
+    : isMobileWeek
+      ? Array.from({ length: 35 }, (_, index) => addDays(weekWindowStart, index))
+      : days, [days, isMobileDay, isMobileWeek, selectedDay, weekWindowStart]);
+  const dayColumns = isMobileWeek ? renderedDays : days;
   const eventsByDay = useMemo(() => {
     const result = new Map(renderedDays.map((day) => [day, []]));
     events.forEach((event) => result.get(event.date)?.push(event));
@@ -385,6 +528,36 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
     if (!scroll) return;
     scroll.scrollTop = Math.max(0, currentTimePosition - scroll.clientHeight * 0.3);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isMobileWeek) return;
+    const desiredStart = addDays(startOfWeek(selectedDay), -14);
+    if (weekWindowStart !== desiredStart) {
+      weekAdjustmentRef.current = { initial: true, expectedStart: desiredStart };
+      setWeekWindowStart(desiredStart);
+      return;
+    }
+    const surface = weekSurfaceRef.current;
+    if (surface) {
+      const weekday = (parseDay(selectedDay).getUTCDay() + 6) % 7;
+      surface.scrollLeft = 2 * MOBILE_WEEK_WIDTH + weekday * MOBILE_WEEK_DAY_WIDTH + 48 + MOBILE_WEEK_DAY_WIDTH / 2 - surface.clientWidth / 2;
+    }
+  }, [isMobileWeek]);
+
+  useLayoutEffect(() => {
+    if (!isMobileWeek || !weekAdjustmentRef.current) return;
+    const surface = weekSurfaceRef.current;
+    if (!surface) return;
+    const adjustment = weekAdjustmentRef.current;
+    if (adjustment.expectedStart !== weekWindowStart) return;
+    weekAdjustmentRef.current = null;
+    if (adjustment.initial) {
+      const weekday = (parseDay(selectedDay).getUTCDay() + 6) % 7;
+      surface.scrollLeft = 2 * MOBILE_WEEK_WIDTH + weekday * MOBILE_WEEK_DAY_WIDTH + 48 + MOBILE_WEEK_DAY_WIDTH / 2 - surface.clientWidth / 2;
+    } else {
+      surface.scrollLeft += adjustment.pixels;
+    }
+  }, [weekWindowStart, isMobileWeek]);
 
   useLayoutEffect(() => {
     if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
@@ -465,9 +638,38 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
     settleCarousel(shouldChangeDay ? (distanceX < 0 ? 1 : -1) : 0);
   }
 
+  function handleWeekScroll(event) {
+    if (!isMobileWeek || weekAdjustmentRef.current) return;
+    const surface = event.currentTarget;
+    const center = surface.scrollLeft + surface.clientWidth / 2;
+    const index = Math.max(0, Math.min(34, Math.floor((center - 48) / MOBILE_WEEK_DAY_WIDTH)));
+    const centeredDay = addDays(weekWindowStart, index);
+    if (centeredDay !== selectedDay) onWeekChange(centeredDay);
+
+    if (surface.scrollLeft < MOBILE_WEEK_WIDTH) {
+      const nextStart = addDays(weekWindowStart, -7);
+      weekAdjustmentRef.current = { pixels: MOBILE_WEEK_WIDTH, expectedStart: nextStart };
+      setWeekWindowStart(nextStart);
+    } else if (surface.scrollLeft > 3 * MOBILE_WEEK_WIDTH) {
+      const nextStart = addDays(weekWindowStart, 7);
+      weekAdjustmentRef.current = { pixels: -MOBILE_WEEK_WIDTH, expectedStart: nextStart };
+      setWeekWindowStart(nextStart);
+    }
+  }
+
   return (
     <div
       className={`calendar-surface ${view === "week" ? "week-surface" : "day-surface"}`}
+      ref={weekSurfaceRef}
+      role={isMobileWeek ? "region" : undefined}
+      aria-label={isMobileWeek ? "Kalendarz tygodniowy" : undefined}
+      tabIndex={isMobileWeek ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!isMobileWeek || event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        event.currentTarget.scrollLeft += event.key === "ArrowRight" ? MOBILE_WEEK_DAY_WIDTH : -MOBILE_WEEK_DAY_WIDTH;
+      }}
+      onScroll={handleWeekScroll}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -482,11 +684,11 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
         }
       }}
     >
-      <div className="calendar-inner" style={{ "--day-count": days.length }}>
+      <div className="calendar-inner" style={{ "--day-count": dayColumns.length, ...(isMobileWeek ? { width: `${48 + dayColumns.length * MOBILE_WEEK_DAY_WIDTH}px` } : {}) }}>
         <div className="date-header">
           <div aria-hidden="true" />
           <div className="date-header-days">
-            {days.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined}>
+            {dayColumns.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined}>
               <span>{formatWeekday(day)}</span>
               <strong>{parseDay(day).getUTCDate()}</strong>
             </div>)}
@@ -496,7 +698,7 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
           <div className="timeline-body" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
             <div className="time-axis">
               {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
-              {showCurrentTime && days.includes(today) && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
+              {showCurrentTime && dayColumns.includes(today) && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
             </div>
             {isMobileDay ? (
               <div className="mobile-carousel-viewport" ref={carouselViewportRef}>
@@ -516,13 +718,13 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
             ) : (
               <div className="day-tracks">
                 {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }} />)}
-                {days.map((day) => (
+                {dayColumns.map((day) => (
                   <div className={`day-track${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}${isWeekend(day) ? " is-weekend" : ""}`} key={day}>
                     {layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
                     {day === today && showCurrentTime && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
                   </div>
                 ))}
-                {showCurrentTime && days.includes(today) && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
+                {showCurrentTime && dayColumns.includes(today) && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
               </div>
             )}
           </div>
@@ -719,7 +921,7 @@ export function App() {
           {languageGroups.length > 0 && <div className="collapsed-group-filter"><GroupFilter groups={languageGroups} value={activeGroup} onChange={chooseGroup} id="collapsed-language-group" /></div>}
           <ViewSwitch view={view} onChange={selectView} className="desktop-view-switch" />
           <div className="topbar-right">
-            <DesktopSyncStatus syncDetails={syncDetails} syncWarning={syncWarning} onOpenStatus={loadSyncHistory} />
+            <SyncStatusButton syncDetails={syncDetails} syncWarning={syncWarning} onOpenStatus={loadSyncHistory} popoverId="desktop-sync-popover" />
             <button
               className="theme-toggle icon-button"
               type="button"
@@ -738,16 +940,16 @@ export function App() {
             <h1><strong>{titleMonth}</strong> <span>{titleYear}</span></h1>
             <div className="range-label">{showToolbarDate && <><span className="range-long">{view === "week" ? formatDateRange(days) : formatFullDate(selectedDay)}</span><span className="range-short">{view === "week" ? formatDateRange(days) : formatShortDate(selectedDay)}</span> <i>·</i> </>}{displayedCount} {classCountLabel(displayedCount)}</div>
           </div>
-          {isMobile && <MobileSettings
-            groups={languageGroups}
-            value={activeGroup}
-            onGroupChange={chooseGroup}
-            theme={theme}
-            onThemeChange={() => setTheme((current) => current === "dark" ? "light" : "dark")}
-            syncDetails={syncDetails}
-            syncWarning={syncWarning}
-            onOpenStatus={loadSyncHistory}
-          />}
+          {isMobile && <div className="mobile-header-actions">
+            <SyncStatusButton syncDetails={syncDetails} syncWarning={syncWarning} onOpenStatus={loadSyncHistory} popoverId="mobile-sync-popover" />
+            <MobileSettings
+              groups={languageGroups}
+              value={activeGroup}
+              onGroupChange={chooseGroup}
+              theme={theme}
+              onThemeChange={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+            />
+          </div>}
           <div className="toolbar-actions">
             <div className="nav-buttons">
               <button className="icon-button" type="button" aria-label={view === "month" ? "Poprzedni miesiąc" : view === "week" ? "Poprzedni tydzień" : "Poprzedni dzień"} onClick={() => navigate(-1)}><span className="control-face"><CaretLeft size={16} /></span></button>
@@ -760,7 +962,7 @@ export function App() {
         </div>}
         <div className="calendar-wrapper">
           <ViewSwitch view={view} onChange={selectView} className="mobile-view-switch" />
-          {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile && view === "day" ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} />}
+          {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={isMobile ? events : visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} onSwipeMonth={navigate} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} isMobileWeek={isMobile && view === "week"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} onWeekChange={selectDay} />}
         </div>
       </main>
       <EventDialog event={selectedEvent} onClose={closeEvent} />

@@ -1,4 +1,3 @@
-export const WORKFLOW_URL = "https://github.com/michaelsakhnenko/class-schedule-app/actions/workflows/sync-schedule.yml";
 const WORKFLOW_API = "https://api.github.com/repos/michaelsakhnenko/class-schedule-app/actions/workflows/sync-schedule.yml/runs?per_page=5";
 const DELAY_MS = 95 * 60 * 1000;
 
