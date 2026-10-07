@@ -532,11 +532,9 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
   }, [events]);
   const viewportRef = useRef(null);
   const trackRef = useRef(null);
-  const axisCoverRef = useRef(null);
   const axisContentRef = useRef(null);
   const scrollerRefs = useRef([]);
-  const headerRefs = useRef([]);
-  const timelineRefs = useRef([]);
+  const lastHorizontalScrollRef = useRef(0);
   const edgeGestureRef = useRef(null);
   const transitionTimerRef = useRef(null);
   const axisHideTimerRef = useRef(null);
@@ -556,7 +554,7 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
     transitionTimerRef.current = null;
     axisHideTimerRef.current = null;
     transitioningRef.current = false;
-    axisCoverRef.current?.classList.remove("is-active");
+    viewportRef.current?.classList.remove("is-week-sliding");
     const track = trackRef.current;
     if (track) {
       track.style.transition = "none";
@@ -570,14 +568,14 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
       else if (entryDirectionRef.current) scroller.scrollLeft = entryDirectionRef.current > 0 ? 0 : maximum;
       else {
         const weekday = Math.round((parseDay(selectedDay) - parseDay(weekStart)) / 86400000);
-        scroller.scrollLeft = Math.max(0, Math.min(maximum, weekday * MOBILE_WEEK_DAY_WIDTH + MOBILE_WEEK_DAY_WIDTH / 2 - scroller.clientWidth / 2));
+        scroller.scrollLeft = Math.max(0, Math.min(maximum, 48 + weekday * MOBILE_WEEK_DAY_WIDTH + MOBILE_WEEK_DAY_WIDTH / 2 - scroller.clientWidth / 2));
       }
-      if (headerRefs.current[index]) headerRefs.current[index].scrollLeft = scroller.scrollLeft;
     });
+    lastHorizontalScrollRef.current = scrollerRefs.current[1]?.scrollLeft ?? 0;
     entryDirectionRef.current = 0;
-    const currentTimeline = timelineRefs.current[1];
-    if (scrollTopRef.current === null && currentTimeline) scrollTopRef.current = Math.max(0, currentTimePosition - currentTimeline.clientHeight * 0.3);
-    timelineRefs.current.forEach((timeline) => { if (timeline) timeline.scrollTop = scrollTopRef.current ?? 0; });
+    const currentScroller = scrollerRefs.current[1];
+    if (scrollTopRef.current === null && currentScroller) scrollTopRef.current = Math.max(0, currentTimePosition - currentScroller.clientHeight * 0.3);
+    scrollerRefs.current.forEach((scroller) => { if (scroller) scroller.scrollTop = scrollTopRef.current ?? 0; });
   }, [weekStart]);
 
   useEffect(() => () => {
@@ -589,22 +587,28 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
   function showFixedAxis() {
     if (axisHideTimerRef.current) window.clearTimeout(axisHideTimerRef.current);
     axisHideTimerRef.current = null;
-    const currentTop = timelineRefs.current[1]?.scrollTop ?? 0;
-    if (axisContentRef.current) axisContentRef.current.style.transform = `translate3d(0, ${-currentTop}px, 0)`;
-    axisCoverRef.current?.classList.add("is-active");
+    const currentTop = scrollerRefs.current[1]?.scrollTop ?? 0;
+    scrollTopRef.current = currentTop;
+    scrollerRefs.current.forEach((scroller) => { if (scroller) scroller.scrollTop = currentTop; });
+    if (axisContentRef.current) axisContentRef.current.style.transform = `translateY(${-currentTop}px)`;
+    viewportRef.current?.classList.add("is-week-sliding");
   }
 
   function selectVisibleDay() {
     const scroller = scrollerRefs.current[1];
     if (!scroller || transitioningRef.current) return;
     const center = scroller.scrollLeft + scroller.clientWidth / 2;
-    const index = Math.max(0, Math.min(6, Math.floor(center / MOBILE_WEEK_DAY_WIDTH)));
+    const index = Math.max(0, Math.min(6, Math.floor((center - 48) / MOBILE_WEEK_DAY_WIDTH)));
     const day = clampCalendarDay(addDays(weekStart, index));
     if (day !== selectedDay) onWeekChange(day);
   }
 
   function handleNativeScroll(event) {
-    if (headerRefs.current[1]) headerRefs.current[1].scrollLeft = event.currentTarget.scrollLeft;
+    scrollTopRef.current = event.currentTarget.scrollTop;
+    if (viewportRef.current?.classList.contains("is-week-sliding") && axisContentRef.current) axisContentRef.current.style.transform = `translateY(${-event.currentTarget.scrollTop}px)`;
+    const scrollLeft = event.currentTarget.scrollLeft;
+    if (Math.abs(scrollLeft - lastHorizontalScrollRef.current) < 1) return;
+    lastHorizontalScrollRef.current = scrollLeft;
     if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = window.setTimeout(selectVisibleDay, 140);
   }
@@ -617,9 +621,9 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
     showFixedAxis();
     transitioningRef.current = true;
     suppressClickUntilRef.current = performance.now() + 350;
-    const currentTop = timelineRefs.current[1]?.scrollTop ?? 0;
+    const currentTop = scrollerRefs.current[1]?.scrollTop ?? 0;
     scrollTopRef.current = currentTop;
-    timelineRefs.current.forEach((timeline) => { if (timeline) timeline.scrollTop = currentTop; });
+    scrollerRefs.current.forEach((scroller) => { if (scroller) scroller.scrollTop = currentTop; });
     const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220;
     track.style.transition = duration ? `transform ${duration}ms var(--ease-out)` : "none";
     track.style.transform = `translate3d(calc(-33.333333% + ${-direction * width}px), 0, 0)`;
@@ -638,7 +642,7 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
     track.style.transform = "translate3d(-33.333333%, 0, 0)";
     axisHideTimerRef.current = window.setTimeout(() => {
       axisHideTimerRef.current = null;
-      axisCoverRef.current?.classList.remove("is-active");
+      viewportRef.current?.classList.remove("is-week-sliding");
     }, duration);
   }
 
@@ -694,45 +698,43 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
           const paneDays = weekDays(paneWeek);
           const showNow = showCurrentTime && paneDays.includes(today);
           return <div className="mobile-week-pane" key={paneWeek} inert={paneIndex !== 1} aria-hidden={paneIndex !== 1}>
-            <div className="calendar-inner" style={{ "--day-count": 7 }}>
-              <div className="date-header"><div className="mobile-week-date-scroll" ref={(node) => { headerRefs.current[paneIndex] = node; }}><div className="date-header-days" style={{ width: `${MOBILE_WEEK_WIDTH}px` }}>
-                {paneDays.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined} aria-hidden={!isCalendarDay(day) ? true : undefined}>
-                  {isCalendarDay(day) && <><span>{formatWeekday(day)}</span><strong>{parseDay(day).getUTCDate()}</strong></>}
-                </div>)}
-              </div></div></div>
-              <div className="timeline-scroll" ref={(node) => { timelineRefs.current[paneIndex] = node; }} onScroll={paneIndex === 1 ? (event) => { scrollTopRef.current = event.currentTarget.scrollTop; } : undefined}>
+            <div
+              className="mobile-week-native-scroll"
+              ref={(node) => { scrollerRefs.current[paneIndex] = node; }}
+              role={paneIndex === 1 ? "region" : undefined}
+              aria-label={paneIndex === 1 ? "Kalendarz tygodniowy" : undefined}
+              tabIndex={paneIndex === 1 ? 0 : -1}
+              onScroll={paneIndex === 1 ? handleNativeScroll : undefined}
+              onTouchStart={paneIndex === 1 ? startEdgeTouch : undefined}
+              onTouchMove={paneIndex === 1 ? moveEdgeTouch : undefined}
+              onTouchEnd={paneIndex === 1 ? finishEdgeTouch : undefined}
+              onTouchCancel={paneIndex === 1 ? (event) => finishEdgeTouch(event, true) : undefined}
+              onKeyDown={paneIndex === 1 ? (event) => {
+                if (event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+                const scroller = event.currentTarget;
+                const maximum = scroller.scrollWidth - scroller.clientWidth;
+                if (event.key === "ArrowLeft" && scroller.scrollLeft <= 1 && canPreviousWeek) { event.preventDefault(); slideToWeek(-1); }
+                if (event.key === "ArrowRight" && scroller.scrollLeft >= maximum - 1 && canNextWeek) { event.preventDefault(); slideToWeek(1); }
+              } : undefined}
+            >
+              <div className="calendar-inner" style={{ width: `${48 + MOBILE_WEEK_WIDTH}px`, "--day-count": 7 }}>
+                <div className="date-header"><div aria-hidden="true" /><div className="date-header-days">
+                  {paneDays.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined} aria-hidden={!isCalendarDay(day) ? true : undefined}>
+                    {isCalendarDay(day) && <><span>{formatWeekday(day)}</span><strong>{parseDay(day).getUTCDate()}</strong></>}
+                  </div>)}
+                </div></div>
                 <div className="timeline-body" style={{ height: `${END_HOUR * HOUR_HEIGHT}px` }}>
                   <div className="time-axis">
                     {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${hour * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
                     {showNow && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
                   </div>
-                  <div
-                    className="mobile-week-native-scroll"
-                    ref={(node) => { scrollerRefs.current[paneIndex] = node; }}
-                    role={paneIndex === 1 ? "region" : undefined}
-                    aria-label={paneIndex === 1 ? "Kalendarz tygodniowy" : undefined}
-                    tabIndex={paneIndex === 1 ? 0 : -1}
-                    onScroll={paneIndex === 1 ? handleNativeScroll : undefined}
-                    onTouchStart={paneIndex === 1 ? startEdgeTouch : undefined}
-                    onTouchMove={paneIndex === 1 ? moveEdgeTouch : undefined}
-                    onTouchEnd={paneIndex === 1 ? finishEdgeTouch : undefined}
-                    onTouchCancel={paneIndex === 1 ? (event) => finishEdgeTouch(event, true) : undefined}
-                    onKeyDown={paneIndex === 1 ? (event) => {
-                      if (event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
-                      const scroller = event.currentTarget;
-                      const maximum = scroller.scrollWidth - scroller.clientWidth;
-                      if (event.key === "ArrowLeft" && scroller.scrollLeft <= 1 && canPreviousWeek) { event.preventDefault(); slideToWeek(-1); }
-                      if (event.key === "ArrowRight" && scroller.scrollLeft >= maximum - 1 && canNextWeek) { event.preventDefault(); slideToWeek(1); }
-                    } : undefined}
-                  >
-                    <div className="day-tracks" style={{ width: `${MOBILE_WEEK_WIDTH}px`, height: "100%" }}>
-                      {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${hour * HOUR_HEIGHT}px` }} />)}
-                      {paneDays.map((day) => <div className={`day-track${day === today ? " is-today" : ""}${isWeekend(day) && isCalendarDay(day) ? " is-weekend" : ""}`} key={day} inert={!isCalendarDay(day)} aria-hidden={!isCalendarDay(day) ? true : undefined}>
-                        {isCalendarDay(day) && layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
-                        {day === today && showNow && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
-                      </div>)}
-                      {showNow && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
-                    </div>
+                  <div className="day-tracks">
+                    {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${hour * HOUR_HEIGHT}px` }} />)}
+                    {paneDays.map((day, dayIndex) => <div className={`day-track${dayIndex === 0 ? " is-first" : ""}${day === today ? " is-today" : ""}${isWeekend(day) && isCalendarDay(day) ? " is-weekend" : ""}`} key={day} inert={!isCalendarDay(day)} aria-hidden={!isCalendarDay(day) ? true : undefined}>
+                      {isCalendarDay(day) && layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
+                      {day === today && showNow && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
+                    </div>)}
+                    {showNow && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
                   </div>
                 </div>
               </div>
@@ -740,8 +742,8 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
           </div>;
         })}
       </div>
-      <div className="mobile-week-axis-cover" ref={axisCoverRef} aria-hidden="true">
-        <div className="mobile-week-axis-content time-axis" ref={axisContentRef} style={{ height: `${END_HOUR * HOUR_HEIGHT}px` }}>
+      <div className="mobile-week-axis-overlay" aria-hidden="true">
+        <div className="mobile-week-axis-content" ref={axisContentRef} style={{ height: `${END_HOUR * HOUR_HEIGHT}px` }}>
           {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${hour * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
           {showCurrentTime && weeks[1] === startOfWeek(today) && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
         </div>

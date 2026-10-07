@@ -367,16 +367,19 @@ button.date-circle:active { transform: none; }
   .mobile-week-surface { position: relative; overflow: clip; touch-action: auto; }
   .mobile-week-track { display: flex; width: 300%; height: 100%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
   .mobile-week-pane { flex: 0 0 33.333333%; min-width: 0; height: 100%; overflow: hidden; }
-  .mobile-week-axis-cover { position: absolute; z-index: 3; top: 75px; bottom: 0; left: 0; width: 48px; overflow: hidden; background: var(--page); opacity: 0; pointer-events: none; }
-  .mobile-week-axis-cover.is-active { opacity: 1; }
-  .mobile-week-axis-content { width: 48px; }
-  .mobile-week-surface .time-axis { z-index: 2; border-right: 1px solid var(--line); background: var(--page); box-shadow: 1px 0 0 var(--page); }
-  .mobile-week-date-scroll { width: 100%; height: 100%; overflow: hidden; }
-  .mobile-week-date-scroll .date-header-days { margin-left: 48px; }
-  .mobile-week-native-scroll { width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: auto; }
+  .mobile-week-native-scroll { width: 100%; height: 100%; overflow: auto; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: auto; }
   .mobile-week-native-scroll::-webkit-scrollbar { display: none; }
+  .mobile-week-surface .calendar-inner { height: auto; min-height: 100%; }
   .week-surface .date-header { display: grid; grid-template-columns: 48px minmax(0, 1fr); min-height: 75px; flex-basis: 75px; }
-  .mobile-week-surface .date-header { display: block; }
+  .mobile-week-surface .date-header { position: sticky; top: 0; z-index: 5; background: var(--page); }
+  .mobile-week-surface .timeline-body { flex: none; }
+  .mobile-week-surface .time-axis { position: sticky; left: 0; z-index: 4; border-right: 1px solid var(--line); background: var(--page); box-shadow: 1px 0 0 var(--page); }
+  .mobile-week-axis-overlay { position: absolute; top: 75px; bottom: 0; left: 0; z-index: 6; width: 48px; overflow: hidden; border-right: 1px solid var(--line); background: var(--page); box-shadow: 1px 0 0 var(--page); visibility: hidden; pointer-events: none; }
+  .mobile-week-axis-content { position: relative; width: 100%; }
+  .mobile-week-surface.is-week-sliding .mobile-week-axis-overlay { visibility: visible; }
+  .mobile-week-surface.is-week-sliding .mobile-week-pane .time-axis { border-right: 0; box-shadow: none; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, var(--page) 1px 78px); }
+  .mobile-week-surface.is-week-sliding .mobile-week-pane .time-axis > * { visibility: hidden; }
+  .mobile-week-surface.is-week-sliding .mobile-week-pane .day-track.is-first { border-left: 0; }
   .week-surface .calendar-inner { min-width: 0; }
   .week-surface .date-header-days, .week-surface .day-tracks { grid-template-columns: repeat(var(--day-count), 136px); }
   .week-surface .date-header-days { padding-top: 16px; }
