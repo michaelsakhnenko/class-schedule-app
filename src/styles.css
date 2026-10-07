@@ -413,6 +413,35 @@ button.date-circle:active { transform: none; }
   .month-agenda-event small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
 
+/* Touch/mobile layouts should not retain desktop hover feedback. */
+@media (max-width: 760px) {
+  .mobile-settings-trigger:hover { color: var(--text-secondary); }
+  .mobile-theme-action:hover { background: transparent; }
+  .toolbar-actions button:hover .control-face { background: var(--surface-raised); }
+  .event-card:hover,
+  .event-card.is-cancelled:hover,
+  :root[data-theme="light"] .event-card:hover,
+  :root[data-theme="light"] .event-card.is-cancelled:hover {
+    filter: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .1);
+    z-index: 2;
+  }
+  .month-event:hover,
+  .month-event.is-cancelled:hover,
+  .month-agenda-event:hover {
+    filter: none;
+  }
+  :root[data-theme="light"] .month-event:hover,
+  :root[data-theme="light"] .month-agenda-event:hover {
+    filter: none;
+  }
+  .month-date:hover,
+  .month-date.is-selected:hover,
+  .month-date.is-static:hover {
+    background: transparent;
+  }
+}
+
 @media (max-width: 429px) {
   .calendar-heading h1 { font-size: 24px; }
 }
