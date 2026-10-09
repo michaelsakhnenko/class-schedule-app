@@ -290,6 +290,108 @@ function ViewSwitch({ view, onChange, className = "" }) {
   );
 }
 
+function MobileDayWeekStrip({ selectedDay, today, onSelectDay, onSwipeWeek }) {
+  const viewportRef = useRef(null);
+  const trackRef = useRef(null);
+  const swipeStartRef = useRef(null);
+  const settleTimerRef = useRef(null);
+  const settlingRef = useRef(false);
+  const weeks = useMemo(() => [-1, 0, 1].map((offset) => addDays(startOfWeek(selectedDay), offset * 7)), [selectedDay]);
+  const canPrevious = isCalendarDay(addDays(selectedDay, -7));
+  const canNext = isCalendarDay(addDays(selectedDay, 7));
+
+  useLayoutEffect(() => {
+    if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = null;
+    settlingRef.current = false;
+    const track = trackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = "translate3d(-33.333333%, 0, 0)";
+    }
+  }, [selectedDay]);
+
+  useEffect(() => () => {
+    if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
+  }, []);
+
+  function settle(direction) {
+    if ((direction < 0 && !canPrevious) || (direction > 0 && !canNext)) direction = 0;
+    const track = trackRef.current;
+    const width = viewportRef.current?.clientWidth;
+    if (!track || !width) return;
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220;
+    settlingRef.current = true;
+    track.style.transition = duration ? `transform ${duration}ms var(--ease-out)` : "none";
+    track.style.transform = `translate3d(calc(-33.333333% + ${-direction * width}px), 0, 0)`;
+    settleTimerRef.current = window.setTimeout(() => {
+      settleTimerRef.current = null;
+      if (direction) flushSync(() => onSwipeWeek(direction));
+      else {
+        track.style.transition = "none";
+        track.style.transform = "translate3d(-33.333333%, 0, 0)";
+        settlingRef.current = false;
+      }
+    }, duration + 16);
+  }
+
+  function handleTouchStart(event) {
+    if (event.touches.length !== 1 || settlingRef.current) {
+      swipeStartRef.current = null;
+      return;
+    }
+    swipeStartRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY, at: performance.now(), axis: null };
+  }
+
+  function handleTouchMove(event) {
+    const start = swipeStartRef.current;
+    if (!start || event.touches.length !== 1) return;
+    const distanceX = event.touches[0].clientX - start.x;
+    const distanceY = event.touches[0].clientY - start.y;
+    if (!start.axis && Math.max(Math.abs(distanceX), Math.abs(distanceY)) >= 8) {
+      start.axis = Math.abs(distanceX) > Math.abs(distanceY) * 1.2 ? "x" : "y";
+    }
+    if (start.axis !== "x") return;
+    event.preventDefault();
+    const width = viewportRef.current?.clientWidth ?? 0;
+    const offset = Math.max(canNext ? -width : 0, Math.min(canPrevious ? width : 0, distanceX));
+    const track = trackRef.current;
+    if (track) {
+      track.style.transition = "none";
+      track.style.transform = `translate3d(calc(-33.333333% + ${offset}px), 0, 0)`;
+    }
+  }
+
+  function handleTouchEnd(event) {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch || start.axis === "y") return;
+    const distanceX = touch.clientX - start.x;
+    const distanceY = touch.clientY - start.y;
+    if (Math.abs(distanceX) < 12 || Math.abs(distanceX) < Math.abs(distanceY) * 1.2) {
+      if (start.axis === "x") settle(0);
+      return;
+    }
+    const width = viewportRef.current?.clientWidth ?? 0;
+    const elapsed = Math.max(1, performance.now() - start.at);
+    const shouldChange = Math.abs(distanceX) >= Math.min(72, width * 0.2) || (Math.abs(distanceX) >= 28 && Math.abs(distanceX) / elapsed > 0.45);
+    settle(shouldChange ? (distanceX < 0 ? 1 : -1) : 0);
+  }
+
+  return (
+    <div className="mobile-date-strip-carousel" ref={viewportRef} role="region" aria-label="Wybierz dzień i tydzień">
+      <div className="mobile-date-strip-track" ref={trackRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onTouchCancel={() => { if (swipeStartRef.current?.axis === "x") settle(0); swipeStartRef.current = null; }}>
+        {weeks.map((weekStart, paneIndex) => <div className="mobile-date-strip-pane" key={weekStart} inert={paneIndex !== 1} aria-hidden={paneIndex !== 1}>
+          <div className="mobile-date-strip">
+            {weekDays(weekStart).map((day) => isCalendarDay(day) ? <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => onSelectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button> : <span className="mobile-date-unavailable" key={day} aria-hidden="true" />)}
+          </div>
+        </div>)}
+      </div>
+    </div>
+  );
+}
+
 function Sidebar({ selectedDay, miniMonth, setMiniMonth, classDates, languageGroups, selectedGroup, onGroupChange, onSelectDay, collapsed }) {
   return (
     <aside id="schedule-sidebar" className="sidebar" aria-label="Panel boczny" aria-hidden={collapsed} inert={collapsed}>
@@ -1055,7 +1157,6 @@ export function App() {
   const events = useMemo(() => filterByLanguageGroup(allEvents, activeGroup), [allEvents, activeGroup]);
 
   const days = useMemo(() => view === "week" ? weekDays(selectedDay) : view === "month" ? monthDays(selectedDay) : [selectedDay], [selectedDay, view]);
-  const currentWeek = useMemo(() => weekDays(selectedDay), [selectedDay]);
   const monthlyClasses = useMemo(() => events.filter((event) => event.date.slice(0, 7) === selectedDay.slice(0, 7)), [events, selectedDay]);
   const classDates = useMemo(() => new Set(events.filter((event) => !isCancelled(event)).map((event) => event.date)), [events]);
   const visibleClasses = useMemo(() => events.filter((event) => isCalendarDay(event.date) && days.includes(event.date)), [events, days]);
@@ -1157,9 +1258,9 @@ export function App() {
             </div>
           </div>
         </div>
-        {view === "day" && <div className="mobile-date-strip" aria-label="Wybierz dzień">
-          {currentWeek.map((day) => isCalendarDay(day) ? <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => selectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button> : <span className="mobile-date-unavailable" key={day} aria-hidden="true" />)}
-        </div>}
+        {view === "day" && <MobileDayWeekStrip selectedDay={selectedDay} today={today} onSelectDay={selectDay} onSwipeWeek={(direction) => {
+          if (canNavigate(direction * 7)) selectDay(addDays(selectedDay, direction * 7));
+        }} />}
         <div className="calendar-wrapper">
           <ViewSwitch view={view} onChange={selectView} className="mobile-view-switch" />
           {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={isMobile ? events : visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} onSwipeMonth={navigate} /> : isMobile && view === "week" ? <MobileWeekTimeline selectedDay={selectedDay} events={events} now={now} onEventClick={setSelectedEvent} onWeekChange={selectDay} scrollTopRef={timelineScrollTopRef} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} scrollTopRef={timelineScrollTopRef} />}

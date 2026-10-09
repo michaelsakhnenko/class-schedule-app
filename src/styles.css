@@ -172,7 +172,7 @@ button.date-circle:active { transform: none; }
 .toolbar-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
 .toolbar-actions .control-face { display: inline-flex; align-items: center; justify-content: center; }
 .nav-buttons { display: flex; gap: 4px; }
-.mobile-date-strip { display: none; }
+.mobile-date-strip, .mobile-date-strip-carousel { display: none; }
 .calendar-wrapper { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .calendar-loading { flex: 1; min-height: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; }
 .calendar-error { align-content: center; gap: 12px; }
@@ -353,7 +353,10 @@ button.date-circle:active { transform: none; }
   .toolbar-actions .control-face { min-height: 32px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-raised); transition: background .15s ease; }
   .toolbar-actions .nav-buttons .control-face { width: 32px; height: 32px; }
   .toolbar-actions button:hover .control-face { background: var(--surface-hover); }
-  .mobile-date-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 16px 4px 0; gap: 0; border-bottom: 1px solid var(--line-soft); }
+  .mobile-date-strip-carousel { display: block; overflow: hidden; border-bottom: 1px solid var(--line-soft); touch-action: pan-y; }
+  .mobile-date-strip-track { display: flex; width: 300%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
+  .mobile-date-strip-pane { flex: 0 0 33.333333%; min-width: 0; }
+  .mobile-date-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 16px 4px 0; gap: 0; border-bottom: 0; }
   .mobile-date-strip button { display: flex; align-items: center; flex-direction: column; gap: 4px; padding: 4px 0; min-width: 0; border: 0; color: var(--muted); background: transparent; cursor: pointer; }
   .mobile-date-strip button:active { transform: none; }
   .mobile-date-strip span { font-size: 12px; }
