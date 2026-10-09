@@ -1258,12 +1258,12 @@ export function App() {
             </div>
           </div>
         </div>
-        {view === "day" && <MobileDayWeekStrip selectedDay={selectedDay} today={today} onSelectDay={selectDay} onSwipeWeek={(direction) => {
+        {(view === "day" || view === "week") && <MobileDayWeekStrip selectedDay={selectedDay} today={today} onSelectDay={selectDay} onSwipeWeek={(direction) => {
           if (canNavigate(direction * 7)) selectDay(addDays(selectedDay, direction * 7));
         }} />}
         <div className="calendar-wrapper">
           <ViewSwitch view={view} onChange={selectView} className="mobile-view-switch" />
-          {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={isMobile ? events : visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} onSwipeMonth={navigate} /> : isMobile && view === "week" ? <MobileWeekTimeline selectedDay={selectedDay} events={events} now={now} onEventClick={setSelectedEvent} onWeekChange={selectDay} scrollTopRef={timelineScrollTopRef} /> : <CalendarTimeline days={days} selectedDay={selectedDay} events={isMobile ? events : visibleClasses} view={view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} scrollTopRef={timelineScrollTopRef} />}
+          {loading ? <div className="calendar-loading">Ładowanie planu…</div> : loadError && allEvents.length === 0 ? <div className="calendar-loading calendar-error"><span>Nie udało się wczytać planu.</span><button type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1); }}>Spróbuj ponownie</button></div> : view === "month" ? <MonthGrid selectedDay={selectedDay} events={isMobile ? events : visibleClasses} isMobile={isMobile} onSelectDay={selectDay} onEventClick={setSelectedEvent} onSwipeMonth={navigate} /> : <CalendarTimeline days={isMobile && view === "week" ? [selectedDay] : days} selectedDay={selectedDay} events={isMobile ? events : visibleClasses} view={isMobile && view === "week" ? "day" : view} isMobileDay={isMobile && view === "day"} now={now} onEventClick={setSelectedEvent} onSwipeDay={navigate} scrollTopRef={timelineScrollTopRef} />}
         </div>
       </main>
       <EventDialog event={selectedEvent} onClose={closeEvent} />
