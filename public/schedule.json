@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-10-08T16:28:53.201Z",
+  "publishedAt": "2026-10-09T09:04:44.236Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -267,7 +267,8 @@
       "room": "F San Diego",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
-      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000",
+      "status": "cancelled"
     },
     {
       "id": "a3116940946b7d17f5b3",
@@ -280,7 +281,8 @@
       "room": "F San Diego",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
-      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000",
+      "status": "cancelled"
     },
     {
       "id": "dfea9f0aefd2fdc53b90",
@@ -1735,6 +1737,32 @@
       "group": "cw/3/ZS",
       "room": "F San Diego",
       "instructor": "prof. IDEIS dr inż. Zbigniew Handzel",
+      "notes": "",
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+    },
+    {
+      "id": "8215a1d238ae867b3b3a",
+      "date": "2027-01-12",
+      "startTime": "15:15",
+      "endTime": "16:45",
+      "title": "Zarządzanie w ochronie środowiska",
+      "type": "seminar",
+      "group": "konw/3/ZS",
+      "room": "F San Diego",
+      "instructor": "dr Wojciech Blecharczyk",
+      "notes": "",
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+    },
+    {
+      "id": "d40f91d97885f1fa9bf5",
+      "date": "2027-01-12",
+      "startTime": "17:00",
+      "endTime": "18:30",
+      "title": "Zarządzanie w ochronie środowiska",
+      "type": "exercise",
+      "group": "cw/3/ZS",
+      "room": "F San Diego",
+      "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
