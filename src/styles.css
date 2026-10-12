@@ -35,6 +35,7 @@
   --month-selected-tint: rgba(255,174,0,.04);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-calendar: cubic-bezier(0.28, 0.7, 0.28, 1);
   --sidebar-duration: 240ms;
 }
 
@@ -467,7 +468,7 @@ button.date-circle:active { transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
-  .mobile-carousel-track { transition-duration: 80ms !important; }
+  .mobile-carousel-track { transition-duration: .01ms !important; }
   .date-circle, .date-circle::before { transition: none !important; }
   .view-indicator { transition: none !important; }
   .theme-icon { transition: none !important; transform: none !important; filter: none !important; }
