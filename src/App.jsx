@@ -53,6 +53,11 @@ function clampCalendarDay(day) {
   return day < CALENDAR_START ? CALENDAR_START : day > CALENDAR_END ? CALENDAR_END : day;
 }
 
+function canShiftWeek(day, direction) {
+  const targetWeek = addDays(startOfWeek(day), direction * 7);
+  return targetWeek >= startOfWeek(CALENDAR_START) && targetWeek <= startOfWeek(CALENDAR_END);
+}
+
 function isCalendarMonth(day) {
   return day.slice(0, 7) >= CALENDAR_START.slice(0, 7) && day.slice(0, 7) <= CALENDAR_END.slice(0, 7);
 }
@@ -298,8 +303,8 @@ function MobileDayWeekStrip({ selectedDay, today, showSelection, onSelectDay, on
   const settlingRef = useRef(false);
   const weekStart = startOfWeek(selectedDay);
   const weeks = useMemo(() => [-1, 0, 1].map((offset) => addDays(weekStart, offset * 7)), [weekStart]);
-  const canPrevious = isCalendarDay(addDays(selectedDay, -7));
-  const canNext = isCalendarDay(addDays(selectedDay, 7));
+  const canPrevious = canShiftWeek(selectedDay, -1);
+  const canNext = canShiftWeek(selectedDay, 1);
 
   useLayoutEffect(() => {
     if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
@@ -321,18 +326,16 @@ function MobileDayWeekStrip({ selectedDay, today, showSelection, onSelectDay, on
     const track = trackRef.current;
     const width = viewportRef.current?.clientWidth;
     if (!track || !width) return;
-    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220;
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
     settlingRef.current = true;
     track.style.transition = duration ? `transform ${duration}ms var(--ease-out)` : "none";
     track.style.transform = `translate3d(calc(-33.333333% + ${-direction * width}px), 0, 0)`;
     settleTimerRef.current = window.setTimeout(() => {
       settleTimerRef.current = null;
       if (direction) flushSync(() => onSwipeWeek(direction));
-      else {
-        track.style.transition = "none";
-        track.style.transform = "translate3d(-33.333333%, 0, 0)";
-        settlingRef.current = false;
-      }
+      track.style.transition = "none";
+      track.style.transform = "translate3d(-33.333333%, 0, 0)";
+      settlingRef.current = false;
     }, duration + 16);
   }
 
@@ -652,8 +655,8 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
   const today = todayISO();
   const currentTimePosition = ((now.hour * 60 + now.minute) / 60) * HOUR_HEIGHT;
   const showCurrentTime = currentTimePosition >= 0 && currentTimePosition <= END_HOUR * HOUR_HEIGHT;
-  const canPreviousWeek = weekStart > startOfWeek(CALENDAR_START);
-  const canNextWeek = weekStart < startOfWeek(CALENDAR_END);
+  const canPreviousWeek = canShiftWeek(selectedDay, -1);
+  const canNextWeek = canShiftWeek(selectedDay, 1);
 
   useLayoutEffect(() => {
     if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
@@ -1171,10 +1174,7 @@ export function App() {
   const [titleMonth, titleYear] = formatMonth(titleDay).split(" ");
   const canNavigate = (amount) => {
     if (view === "month") return isCalendarMonth(shiftSelectedMonth(selectedDay, amount));
-    if (view === "week") {
-      const targetWeek = addDays(startOfWeek(selectedDay), amount * 7);
-      return targetWeek >= startOfWeek(CALENDAR_START) && targetWeek <= startOfWeek(CALENDAR_END);
-    }
+    if (view === "week") return canShiftWeek(selectedDay, amount);
     return isCalendarDay(addDays(selectedDay, amount));
   };
 
@@ -1264,7 +1264,7 @@ export function App() {
           </div>
         </div>
         {(view === "day" || view === "week") && <MobileDayWeekStrip selectedDay={selectedDay} today={today} showSelection={view === "day"} onSelectDay={selectDay} onSwipeWeek={(direction) => {
-          if (canNavigate(direction * 7)) selectDay(addDays(selectedDay, direction * 7));
+          if (canShiftWeek(selectedDay, direction)) selectDay(clampCalendarDay(addDays(selectedDay, direction * 7)));
         }} />}
         <div className="calendar-wrapper">
           <ViewSwitch view={view} onChange={selectView} className="mobile-view-switch" />
