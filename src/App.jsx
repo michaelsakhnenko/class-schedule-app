@@ -290,13 +290,14 @@ function ViewSwitch({ view, onChange, className = "" }) {
   );
 }
 
-function MobileDayWeekStrip({ selectedDay, today, onSelectDay, onSwipeWeek }) {
+function MobileDayWeekStrip({ selectedDay, today, showSelection, onSelectDay, onSwipeWeek }) {
   const viewportRef = useRef(null);
   const trackRef = useRef(null);
   const swipeStartRef = useRef(null);
   const settleTimerRef = useRef(null);
   const settlingRef = useRef(false);
-  const weeks = useMemo(() => [-1, 0, 1].map((offset) => addDays(startOfWeek(selectedDay), offset * 7)), [selectedDay]);
+  const weekStart = startOfWeek(selectedDay);
+  const weeks = useMemo(() => [-1, 0, 1].map((offset) => addDays(weekStart, offset * 7)), [weekStart]);
   const canPrevious = isCalendarDay(addDays(selectedDay, -7));
   const canNext = isCalendarDay(addDays(selectedDay, 7));
 
@@ -309,7 +310,7 @@ function MobileDayWeekStrip({ selectedDay, today, onSelectDay, onSwipeWeek }) {
       track.style.transition = "none";
       track.style.transform = "translate3d(-33.333333%, 0, 0)";
     }
-  }, [selectedDay]);
+  }, [weekStart]);
 
   useEffect(() => () => {
     if (settleTimerRef.current) window.clearTimeout(settleTimerRef.current);
@@ -380,11 +381,15 @@ function MobileDayWeekStrip({ selectedDay, today, onSelectDay, onSwipeWeek }) {
   }
 
   return (
-    <div className="mobile-date-strip-carousel" ref={viewportRef} role="region" aria-label="Wybierz dzień i tydzień">
+    <div className={`mobile-date-strip-carousel${showSelection ? "" : " is-week-strip"}`} ref={viewportRef} role="region" aria-label={showSelection ? "Wybierz dzień i tydzień" : "Przeglądaj tygodnie"}>
       <div className="mobile-date-strip-track" ref={trackRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onTouchCancel={() => { if (swipeStartRef.current?.axis === "x") settle(0); swipeStartRef.current = null; }}>
         {weeks.map((weekStart, paneIndex) => <div className="mobile-date-strip-pane" key={weekStart} inert={paneIndex !== 1} aria-hidden={paneIndex !== 1}>
           <div className="mobile-date-strip">
-            {weekDays(weekStart).map((day) => isCalendarDay(day) ? <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => onSelectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button> : <span className="mobile-date-unavailable" key={day} aria-hidden="true" />)}
+            {weekDays(weekStart).map((day) => {
+              if (!isCalendarDay(day)) return <span className="mobile-date-unavailable" key={day} aria-hidden="true" />;
+              if (!showSelection) return <time className={day === today ? "is-today" : ""} dateTime={day} aria-current={day === today ? "date" : undefined} key={day}><span>{formatWeekday(day)}</span><strong>{parseDay(day).getUTCDate()}</strong></time>;
+              return <button className={`${day === selectedDay ? "selected" : ""}${day === today ? " is-today" : ""}`} type="button" key={day} aria-pressed={day === selectedDay} aria-current={day === today ? "date" : undefined} onClick={() => onSelectDay(day)}><span>{formatWeekday(day)}</span><strong className={`date-circle${day === selectedDay ? " is-selected" : ""}`}>{parseDay(day).getUTCDate()}</strong></button>;
+            })}
           </div>
         </div>)}
       </div>
@@ -822,7 +827,7 @@ function MobileWeekTimeline({ selectedDay, events, now, onEventClick, onWeekChan
               <div className="calendar-inner" style={{ width: `${48 + MOBILE_WEEK_WIDTH}px`, "--day-count": 7 }}>
                 <div className="date-header"><div aria-hidden="true" /><div className="date-header-days">
                   {paneDays.map((day) => <div className={`date-header-day is-static${day === today ? " is-today" : ""}`} key={day} aria-current={day === today ? "date" : undefined} aria-hidden={!isCalendarDay(day) ? true : undefined}>
-                    {isCalendarDay(day) && <><span>{formatWeekday(day)}</span><strong>{parseDay(day).getUTCDate()}</strong></>}
+                    {isCalendarDay(day) && <><span>{formatWeekday(day)}</span><span className="date-header-dash" aria-hidden="true">–</span><strong>{parseDay(day).getUTCDate()}</strong></>}
                   </div>)}
                 </div></div>
                 <div className="timeline-body" style={{ height: `${END_HOUR * HOUR_HEIGHT}px` }}>
@@ -1258,7 +1263,7 @@ export function App() {
             </div>
           </div>
         </div>
-        {(view === "day" || view === "week") && <MobileDayWeekStrip selectedDay={selectedDay} today={today} onSelectDay={selectDay} onSwipeWeek={(direction) => {
+        {(view === "day" || view === "week") && <MobileDayWeekStrip selectedDay={selectedDay} today={today} showSelection={view === "day"} onSelectDay={selectDay} onSwipeWeek={(direction) => {
           if (canNavigate(direction * 7)) selectDay(addDays(selectedDay, direction * 7));
         }} />}
         <div className="calendar-wrapper">

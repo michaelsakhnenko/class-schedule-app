@@ -357,37 +357,42 @@ button.date-circle:active { transform: none; }
   .mobile-date-strip-track { display: flex; width: 300%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
   .mobile-date-strip-pane { flex: 0 0 33.333333%; min-width: 0; }
   .mobile-date-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 16px 4px 0; gap: 0; border-bottom: 0; }
-  .mobile-date-strip button { display: flex; align-items: center; flex-direction: column; gap: 4px; padding: 4px 0; min-width: 0; border: 0; color: var(--muted); background: transparent; cursor: pointer; }
+  .mobile-date-strip button, .mobile-date-strip time { display: flex; align-items: center; flex-direction: column; gap: 4px; padding: 4px 0; min-width: 0; border: 0; color: var(--muted); background: transparent; }
+  .mobile-date-strip button { cursor: pointer; }
   .mobile-date-strip button:active { transform: none; }
   .mobile-date-strip span { font-size: 12px; }
   .mobile-date-strip strong { font-size: 12px; font-weight: 600; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
   .mobile-date-strip button.is-today strong { font-weight: 700; }
   .mobile-date-strip button.is-today:not(.selected) strong { color: var(--accent-text); }
   .mobile-date-strip button.selected strong { color: var(--on-accent); }
+  .is-week-strip .mobile-date-strip time.is-today strong { color: var(--accent-text); }
   .date-header { display: none; }
   .day-surface { touch-action: pan-y; }
   .week-surface { overflow-x: hidden; touch-action: pan-y; user-select: none; }
-  .mobile-week-surface { position: relative; overflow: clip; touch-action: auto; }
+  .mobile-week-surface { --week-header-height: 48px; --week-axis-width: 48px; position: relative; overflow: clip; touch-action: auto; }
+  .mobile-week-surface::before { content: ""; position: absolute; top: 0; left: 0; z-index: 7; width: var(--week-axis-width); height: var(--week-header-height); background: var(--page); pointer-events: none; }
+  .mobile-week-surface::after { content: ""; position: absolute; inset: 0; z-index: 8; background: linear-gradient(var(--line), var(--line)) 0 calc(var(--week-header-height) - 1px) / 100% 1px no-repeat, linear-gradient(var(--line), var(--line)) calc(var(--week-axis-width) - 1px) 0 / 1px 100% no-repeat; pointer-events: none; }
   .mobile-week-track { display: flex; width: 300%; height: 100%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
   .mobile-week-pane { flex: 0 0 33.333333%; min-width: 0; height: 100%; overflow: hidden; }
   .mobile-week-native-scroll { width: 100%; height: 100%; overflow: auto; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: auto; }
   .mobile-week-native-scroll::-webkit-scrollbar { display: none; }
   .mobile-week-surface .calendar-inner { height: auto; min-height: 100%; }
-  .week-surface .date-header { display: grid; grid-template-columns: 48px minmax(0, 1fr); min-height: 75px; flex-basis: 75px; }
-  .mobile-week-surface .date-header { position: sticky; top: 0; z-index: 5; background: var(--page); }
+  .mobile-week-surface .date-header { display: grid; grid-template-columns: var(--week-axis-width) minmax(0, 1fr); height: var(--week-header-height); min-height: var(--week-header-height); flex: 0 0 var(--week-header-height); position: sticky; top: 0; z-index: 5; border-bottom: 0; background: var(--page); }
+  .mobile-week-surface .date-header-day.is-today strong { background: transparent; color: var(--accent-text); font-weight: 600; }
   .mobile-week-surface .timeline-body { flex: none; }
-  .mobile-week-surface .time-axis { position: sticky; left: 0; z-index: 4; border-right: 1px solid var(--line); background: var(--page); box-shadow: 1px 0 0 var(--page); }
-  .mobile-week-axis-overlay { position: absolute; top: 75px; bottom: 0; left: 0; z-index: 6; width: 48px; overflow: hidden; border-right: 1px solid var(--line); background: var(--page); box-shadow: 1px 0 0 var(--page); visibility: hidden; pointer-events: none; }
+  .mobile-week-surface .time-axis { position: sticky; left: 0; z-index: 6; border-right: 0; background: var(--page); }
+  .mobile-week-axis-overlay { position: absolute; top: var(--week-header-height); bottom: 0; left: 0; z-index: 6; width: var(--week-axis-width); overflow: hidden; border-right: 0; background: var(--page); visibility: hidden; pointer-events: none; }
   .mobile-week-axis-content { position: relative; width: 100%; }
   .mobile-week-surface.is-week-sliding .mobile-week-axis-overlay { visibility: visible; }
-  .mobile-week-surface.is-week-sliding .mobile-week-pane .time-axis { border-right: 0; box-shadow: none; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, var(--page) 1px 78px); }
+  .mobile-week-surface.is-week-sliding .mobile-week-pane .time-axis { border-right: 0; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, var(--page) 1px 78px); }
   .mobile-week-surface.is-week-sliding .mobile-week-pane .time-axis > * { visibility: hidden; }
-  .mobile-week-surface.is-week-sliding .mobile-week-pane .day-track.is-first { border-left: 0; }
+  .mobile-week-surface .day-track.is-first { border-left: 0; }
   .week-surface .calendar-inner { min-width: 0; }
   .week-surface .date-header-days, .week-surface .day-tracks { grid-template-columns: repeat(var(--day-count), 136px); }
-  .week-surface .date-header-days { padding-top: 16px; }
-  .week-surface .date-header-day { flex-direction: column; gap: 4px; font-size: 12px; }
-  .timeline-body { grid-template-columns: 48px minmax(0, 1fr); }
+  .week-surface .date-header-days { padding-top: 0; }
+  .week-surface .date-header-day { flex-direction: row; gap: 4px; font-size: 12px; }
+  .week-surface .date-header-day strong { display: inline; width: auto; height: auto; font-size: 14px; }
+  .timeline-body { grid-template-columns: var(--week-axis-width, 48px) minmax(0, 1fr); }
   .hour-label { font-size: 12px; right: 4px; }
   .event-title { font-size: 14px; }
   .event-time, .event-room { font-size: 12px; }
@@ -414,6 +419,7 @@ button.date-circle:active { transform: none; }
   .month-agenda-time svg, .month-agenda-room svg { flex: 0 0 14px; }
   .month-agenda-event strong { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 700; }
   .month-agenda-event small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .event-dialog h2 { font-size: 24px; }
 }
 
 /* Touch/mobile layouts should not retain desktop hover feedback. */
