@@ -313,8 +313,8 @@ function ViewSwitch({ view, onChange, className = "" }) {
     <div className={`view-switch ${className}`} role="group" aria-label="Widok kalendarza" data-view={view}>
       <span className="view-indicator" aria-hidden="true" />
       <button className={view === "day" ? "active" : ""} type="button" aria-pressed={view === "day"} aria-label={view === "day" ? "Dzień — wróć do dzisiaj" : undefined} onClick={() => onChange("day")}>Dzień</button>
-      <button className={view === "week" ? "active" : ""} type="button" aria-pressed={view === "week"} onClick={() => onChange("week")}>Tydzień</button>
-      <button className={view === "month" ? "active" : ""} type="button" aria-pressed={view === "month"} onClick={() => onChange("month")}>Miesiąc</button>
+      <button className={view === "week" ? "active" : ""} type="button" aria-pressed={view === "week"} aria-label={view === "week" ? "Tydzień — wróć do bieżącego tygodnia" : undefined} onClick={() => onChange("week")}>Tydzień</button>
+      <button className={view === "month" ? "active" : ""} type="button" aria-pressed={view === "month"} aria-label={view === "month" ? "Miesiąc — wróć do bieżącego miesiąca" : undefined} onClick={() => onChange("month")}>Miesiąc</button>
     </div>
   );
 }
@@ -566,6 +566,8 @@ function MonthPage({ selectedDay, events, isMobile, onSelectDay, onEventClick })
 
 function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick, onSwipeMonth }) {
   const swipeStartRef = useRef(null);
+  const wheelSwipeRef = useRef({ distance: 0, lastEvent: 0, consumed: false });
+  const wheelIdleTimerRef = useRef(null);
   const suppressClickUntilRef = useRef(0);
   const viewportRef = useRef(null);
   const trackRef = useRef(null);
@@ -588,7 +590,40 @@ function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick, o
 
   useEffect(() => () => {
     settleTimerRef.current?.();
+    if (wheelIdleTimerRef.current) window.clearTimeout(wheelIdleTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || isMobile) return;
+    const handleWheel = (event) => {
+      const multiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientWidth : 1;
+      const deltaX = event.deltaX * multiplier;
+      const deltaY = event.deltaY * multiplier;
+      if (Math.abs(deltaX) < 2 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
+      if (event.cancelable) event.preventDefault();
+      const gesture = wheelSwipeRef.current;
+      const now = performance.now();
+      if (now - gesture.lastEvent > 350) {
+        gesture.distance = 0;
+        gesture.consumed = false;
+      }
+      gesture.lastEvent = now;
+      if (wheelIdleTimerRef.current) window.clearTimeout(wheelIdleTimerRef.current);
+      wheelIdleTimerRef.current = window.setTimeout(() => {
+        gesture.distance = 0;
+        gesture.consumed = false;
+      }, 350);
+      if (gesture.consumed || settlingRef.current) return;
+      gesture.distance += deltaX;
+      if (Math.abs(gesture.distance) < 72) return;
+      gesture.consumed = true;
+      const direction = gesture.distance > 0 ? 1 : -1;
+      if (direction > 0 ? canSwipeNext : canSwipePrevious) settle(direction);
+    };
+    viewport.addEventListener("wheel", handleWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", handleWheel);
+  }, [selectedDay, isMobile, canSwipePrevious, canSwipeNext]);
 
   function settle(direction) {
     if ((direction < 0 && !canSwipePrevious) || (direction > 0 && !canSwipeNext)) direction = 0;
@@ -679,8 +714,6 @@ function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick, o
     if (event.pointerType === "mouse") endSwipe(event.clientX, event.clientY);
   }
 
-  if (!isMobile) return <MonthPage selectedDay={selectedDay} events={events} isMobile={false} onSelectDay={onSelectDay} onEventClick={onEventClick} />;
-
   return (
     <div className="month-carousel-viewport" ref={viewportRef} role="region" aria-label="Kalendarz miesięczny" tabIndex={0}
       onKeyDown={(event) => {
@@ -701,7 +734,7 @@ function MonthGrid({ selectedDay, events, isMobile, onSelectDay, onEventClick, o
     >
       <div className="month-carousel-track" ref={trackRef}>
         {pageDays.map((day) => <div className="month-carousel-pane" key={day} inert={day !== selectedDay} aria-hidden={day !== selectedDay}>
-          <MonthPage selectedDay={day} events={events} isMobile onSelectDay={onSelectDay} onEventClick={onEventClick} />
+          <MonthPage selectedDay={day} events={events} isMobile={isMobile} onSelectDay={onSelectDay} onEventClick={onEventClick} />
         </div>)}
       </div>
     </div>
@@ -1446,7 +1479,7 @@ export function App() {
   }
 
   function selectView(nextView) {
-    if (nextView === "day" && view === "day") selectDay(todayISO());
+    if (nextView === view) selectDay(todayISO());
     else setView(nextView);
   }
 
