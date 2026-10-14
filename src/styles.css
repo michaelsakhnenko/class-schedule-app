@@ -313,7 +313,7 @@ button.date-circle:active { transform: none; }
 }
 
 @media (max-width: 760px) {
-  .app-shell { display: flex; min-height: 0; padding-top: calc(env(safe-area-inset-top, 0px) + 16px); transition: none; }
+  .app-shell { display: flex; min-height: 0; padding-top: calc(env(safe-area-inset-top, 0px) + 24px); transition: none; }
   .sidebar { display: none; }
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .collapsed-group-filter { display: none; }
@@ -368,7 +368,7 @@ button.date-circle:active { transform: none; }
   .mobile-date-strip button { cursor: pointer; }
   .mobile-date-strip button:active { transform: none; }
   .mobile-date-strip span { font-size: 12px; }
-  .mobile-date-strip strong { font-size: 12px; font-weight: 600; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+  .mobile-date-strip strong { font-size: 16px; font-weight: 600; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--text); }
   .mobile-date-strip button.is-today strong { font-weight: 700; }
   .mobile-date-strip button.is-today:not(.selected) strong { color: var(--accent-text); }
   .mobile-date-strip button.selected strong { color: var(--on-accent); }
@@ -413,7 +413,7 @@ button.date-circle:active { transform: none; }
   .month-weekday-short { display: inline; }
   .month-cells { min-height: 0; grid-template-rows: repeat(var(--week-count), 64px); }
   .month-cell { padding: 4px; display: flex; flex-direction: column; align-items: center; }
-  .month-date { width: 32px; height: 32px; font-size: 12px; }
+  .month-date { width: 32px; height: 32px; font-size: 14px; }
   .month-date:hover { background: transparent; }
   .month-date::after { content: ""; position: absolute; inset: -6px; }
   .month-event-list { display: none; }
