@@ -95,7 +95,7 @@ async function writeSyncStatus(checkedAt, changedAt, start, end, sourceRows) {
   await rename(temporary, STATUS_OUTPUT);
 }
 
-async function main() {
+async function readSemesterGrid() {
   const browser = await chromium.launch({ headless: true });
   let rows;
   let start;
@@ -155,11 +155,30 @@ async function main() {
   } finally {
     await browser.close();
   }
+  return { rows, start, end };
+}
 
-  const imported = rows.map(normalize);
-  validate(rows, imported, start, end);
+async function main() {
   const previous = await readPrevious();
-  validateCoverage(imported, previous, start, end);
+  let imported;
+  let start;
+  let end;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const result = await readSemesterGrid();
+      const normalized = result.rows.map(normalize);
+      validate(result.rows, normalized, result.start, result.end);
+      validateCoverage(normalized, previous, result.start, result.end);
+      imported = normalized;
+      start = result.start;
+      end = result.end;
+      break;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      console.warn(`Timetable import attempt ${attempt} failed: ${error.message}. Retrying with a fresh browser.`);
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    }
+  }
   const events = reconcileSchedule(previous?.events ?? [], imported, start, end);
   const sameEvents = JSON.stringify(previous?.events) === JSON.stringify(events);
   const sameRange = previous?.sourceRange?.start === start && previous?.sourceRange?.end === end;

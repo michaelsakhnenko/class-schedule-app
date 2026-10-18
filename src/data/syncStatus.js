@@ -1,8 +1,11 @@
 const WORKFLOW_API = "https://api.github.com/repos/michaelsakhnenko/class-schedule-app/actions/workflows/sync-schedule.yml/runs?per_page=30";
+const PUBLISHED_HEARTBEAT = "https://michaelsakhnenko.github.io/class-schedule-app/sync-status.json";
 const DELAY_MS = 95 * 60 * 1000;
 
 export async function getSyncHeartbeat() {
-  const response = await fetch(`${import.meta.env.BASE_URL}sync-status.json`, { cache: "no-cache" });
+  const localPreview = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+  const url = localPreview ? PUBLISHED_HEARTBEAT : `${import.meta.env.BASE_URL}sync-status.json`;
+  const response = await fetch(url, { cache: "no-cache" });
   if (!response.ok) throw new Error(`Could not load sync status (${response.status}).`);
   const status = await response.json();
   if (status.planId !== "1000" || !Number.isFinite(Date.parse(status.checkedAt))) {
