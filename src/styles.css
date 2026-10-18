@@ -22,6 +22,7 @@
   --border-strong: #414141;
   --text: #f0f0f0;
   --text-secondary: #cecece;
+  --week-header-text: #fff;
   --event-meta-opacity: .86;
   --cancel-text: #e4a0a0;
   --muted: #a8a8a8;
@@ -56,6 +57,7 @@
   --border-strong: #e2ded8;
   --text: #3e3b36;
   --text-secondary: #5a5650;
+  --week-header-text: var(--text);
   --event-meta-opacity: .92;
   --cancel-text: #a34d4d;
   --muted: #6d6861;
@@ -206,8 +208,9 @@ button.date-circle:active { transform: none; }
 .day-tracks { display: grid; grid-template-columns: repeat(var(--day-count), minmax(0, 1fr)); position: relative; }
 .mobile-carousel-viewport { position: relative; min-width: 0; height: 100%; overflow: hidden; }
 .mobile-carousel-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 300%; height: 100%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
-.mobile-carousel-pane { position: relative; min-width: 0; height: 100%; overflow: hidden; }
-.mobile-carousel-pane .day-track { position: absolute; inset: 0; }
+.mobile-carousel-pane { position: relative; display: grid; grid-template-columns: var(--week-axis-width, 56px) minmax(0, 1fr); min-width: 0; height: 100%; overflow: hidden; }
+.mobile-day-grid { position: relative; min-width: 0; height: 100%; }
+.mobile-day-grid .day-track { position: absolute; inset: 0; }
 .hour-rule { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); pointer-events: none; z-index: 1; }
 .hour-rule:first-child { background: transparent; }
 .day-track { border-left: 1px solid var(--line); position: relative; min-width: 0; }
@@ -370,11 +373,16 @@ button.date-circle:active { transform: none; }
   .mobile-date-strip span { font-size: 12px; }
   .mobile-date-strip strong { font-size: 16px; font-weight: 600; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--text); }
   .mobile-date-strip button.is-today strong { font-weight: 700; }
+  .mobile-date-strip-carousel:not(.is-week-strip) .mobile-date-strip button:not(.selected) strong { font-weight: 400; }
   .mobile-date-strip button.is-today:not(.selected) strong { color: var(--accent-text); }
   .mobile-date-strip button.selected strong { color: var(--on-accent); }
+  .is-week-strip .mobile-date-strip time strong { font-weight: 400; }
   .is-week-strip .mobile-date-strip time.is-today strong { color: var(--accent-text); }
   .date-header { display: none; }
   .day-surface { --week-axis-width: 56px; touch-action: pan-y; }
+  .day-surface.is-mobile-day .timeline-body { display: block; }
+  .day-surface.is-mobile-day .timeline-body::after { display: none; }
+  .mobile-carousel-pane::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--line); pointer-events: none; }
   .day-surface .now-line i { left: 0; }
   .week-surface { overflow-x: hidden; touch-action: pan-y; user-select: none; }
   .mobile-week-surface { --week-header-height: 32px; --week-axis-width: 48px; position: relative; overflow: clip; touch-action: auto; }
@@ -387,8 +395,10 @@ button.date-circle:active { transform: none; }
   .mobile-week-surface .calendar-inner { height: auto; min-height: 100%; }
   .mobile-week-surface .calendar-inner::after { content: ""; display: block; flex: 0 0 calc(100px + env(safe-area-inset-bottom, 0px)); }
   .mobile-week-surface .date-header { display: grid; grid-template-columns: var(--week-axis-width) minmax(0, 1fr); height: var(--week-header-height); min-height: var(--week-header-height); flex: 0 0 var(--week-header-height); position: sticky; top: 0; z-index: 5; border-bottom: 0; background: var(--page); }
+  .mobile-week-surface .date-header-day { color: var(--week-header-text); }
   .mobile-week-surface .date-header-day + .date-header-day { border-left: 1px solid var(--line); }
-  .mobile-week-surface .date-header-day.is-today strong { background: transparent; color: var(--accent-text); font-weight: 600; }
+  .mobile-week-surface .date-header-day strong { color: var(--week-header-text); font-weight: 400; }
+  .mobile-week-surface .date-header-day.is-today strong { background: transparent; color: var(--accent-text); font-weight: 400; }
   .mobile-week-surface .timeline-body { flex: none; }
   .mobile-week-surface .time-axis { position: sticky; left: 0; z-index: 6; border-right: 0; background: var(--page); }
   .mobile-week-axis-overlay { position: absolute; top: var(--week-header-height); bottom: 0; left: 0; z-index: 6; width: var(--week-axis-width); overflow: hidden; border-right: 0; background: var(--page); visibility: hidden; pointer-events: none; }

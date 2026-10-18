@@ -1264,7 +1264,7 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
 
   return (
     <div
-      className={`calendar-surface ${view === "week" ? "week-surface" : "day-surface"}`}
+      className={`calendar-surface ${view === "week" ? "week-surface" : "day-surface"}${isMobileDay ? " is-mobile-day" : ""}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -1290,21 +1290,27 @@ function CalendarTimeline({ days, selectedDay, events, view, isMobileDay, now, o
         </div>
         <div className="timeline-scroll" ref={scrollRef} onScroll={(event) => { scrollTopRef.current = event.currentTarget.scrollTop; }}>
           <div className="timeline-body" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
-            <div className="time-axis">
+            {!isMobileDay && <div className="time-axis">
               {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
               {showNowInColumns && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
-            </div>
+            </div>}
             {isMobileDay ? (
               <div className="mobile-carousel-viewport" ref={carouselViewportRef}>
                 <div className="mobile-carousel-track" ref={carouselTrackRef}>
                   {renderedDays.map((day) => (
                     <div className="mobile-carousel-pane" key={day} inert={day !== selectedDay} aria-hidden={day !== selectedDay}>
-                      {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }} />)}
-                      <div className={`day-track${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}${isWeekend(day) ? " is-weekend" : ""}`}>
-                        {isCalendarDay(day) && layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
-                        {day === today && showCurrentTime && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
+                      <div className="time-axis">
+                        {HOURS.map((hour) => <div className="hour-label" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }}>{`${String(hour % 24).padStart(2, "0")}:00`}</div>)}
+                        {day === today && showCurrentTime && <span className="now-label" style={{ top: `${currentTimePosition}px` }}>{`${String(now.hour).padStart(2, "0")}:${String(now.minute).padStart(2, "0")}`}</span>}
                       </div>
-                      {day === today && showCurrentTime && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
+                      <div className="mobile-day-grid">
+                        {HOURS.map((hour) => <div className="hour-rule" key={hour} style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px` }} />)}
+                        <div className={`day-track${day === today ? " is-today" : ""}${day === selectedDay ? " is-selected" : ""}${isWeekend(day) ? " is-weekend" : ""}`}>
+                          {isCalendarDay(day) && layoutEvents(eventsByDay.get(day) ?? []).map(({ event, column, columns }) => <EventCard event={event} column={column} columns={columns} onClick={onEventClick} key={event.id} />)}
+                          {day === today && showCurrentTime && <div className="now-line" style={{ top: `${currentTimePosition}px` }}><i /></div>}
+                        </div>
+                        {day === today && showCurrentTime && <div className="now-line-global" style={{ top: `${currentTimePosition}px` }} />}
+                      </div>
                     </div>
                   ))}
                 </div>
