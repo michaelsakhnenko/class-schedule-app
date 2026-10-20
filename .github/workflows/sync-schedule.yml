@@ -31,21 +31,21 @@ jobs:
       - name: Refresh timetable for scheduled or manual runs
         if: github.event_name != 'push'
         run: npm run sync:schedule
-      - name: Check whether the timetable changed
+      - name: Check whether the timetable or heartbeat changed
         id: changes
         run: |
-          git add public/schedule.json
+          git add public/schedule.json public/sync-status.json
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Commit updated timetable
+      - name: Commit updated timetable or heartbeat
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update class schedule"
+          git commit -m "Update class schedule and sync heartbeat"
           git push
       - name: Set GitHub Pages path
         run: |
@@ -56,6 +56,12 @@ jobs:
           else
             echo "GITHUB_PAGES_BASE=/$repo_name/" >> "$GITHUB_ENV"
           fi
+      - name: Use latest validated data for code-push deployment
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin "${{ github.event.repository.default_branch }}"
+          git show FETCH_HEAD:public/schedule.json > public/schedule.json
+          git show FETCH_HEAD:public/sync-status.json > public/sync-status.json
       - name: Build static site
         run: npm run build
       - uses: actions/configure-pages@v5
