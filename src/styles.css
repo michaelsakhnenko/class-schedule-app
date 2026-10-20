@@ -388,7 +388,7 @@ button.date-circle:active { transform: none; }
   .week-surface { overflow-x: hidden; touch-action: pan-y; user-select: none; }
   .mobile-week-surface { --week-header-height: 32px; --week-axis-width: 48px; position: relative; overflow: clip; touch-action: auto; }
   .mobile-week-surface::before { content: ""; position: absolute; top: 0; left: 0; z-index: 7; width: var(--week-axis-width); height: var(--week-header-height); background: var(--page); pointer-events: none; }
-  .mobile-week-surface::after { content: ""; position: absolute; inset: 0; z-index: 8; background: linear-gradient(var(--line), var(--line)) 0 calc(var(--week-header-height) - 1px) / 100% 1px no-repeat; pointer-events: none; }
+  .mobile-week-surface::after { content: ""; position: absolute; inset: 0; z-index: 8; background: linear-gradient(var(--line), var(--line)) 0 calc(var(--week-header-height) - 1px) / 100% 1px no-repeat, linear-gradient(var(--line), var(--line)) calc(var(--week-axis-width) - 1px) 0 / 1px 100% no-repeat; pointer-events: none; }
   .mobile-week-track { display: flex; width: 300%; height: 100%; transform: translate3d(-33.333333%, 0, 0); will-change: transform; }
   .mobile-week-pane { flex: 0 0 33.333333%; min-width: 0; height: 100%; overflow: hidden; }
   .mobile-week-native-scroll { width: 100%; height: 100%; overflow: auto; overscroll-behavior: none; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: auto; }
