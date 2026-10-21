@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-10-09T09:04:44.236Z",
+  "publishedAt": "2026-10-21T11:46:04.531Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -883,53 +883,53 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "beca563cf03405af2718",
+      "id": "aa97d4efbe913c8417c3",
       "date": "2026-11-12",
       "startTime": "08:15",
       "endTime": "09:45",
       "title": "Język angielski",
       "type": "exercise",
       "group": "1 angPrad B1/3/ZS",
-      "room": "F Kopenhaga",
+      "room": "F Zajęcia zdalne na Teams",
       "instructor": "mgr Sylwia Pradel",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "8a99bc9cade3b8b84b92",
+      "id": "d9b408c1248694109543",
       "date": "2026-11-12",
       "startTime": "08:15",
       "endTime": "09:45",
       "title": "Język angielski",
       "type": "exercise",
       "group": "4 angNow B2+/3/ZS",
-      "room": "F Dublin",
+      "room": "F Zajęcia zdalne na Teams",
       "instructor": "mgr Aneta Nowińska",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "7990486a184b58623977",
+      "id": "51b1cd067d2b6ae44f16",
       "date": "2026-11-12",
       "startTime": "10:00",
       "endTime": "11:30",
       "title": "Język angielski",
       "type": "exercise",
       "group": "2 angPrad B1+/3/ZS",
-      "room": "F Kopenhaga",
+      "room": "F Zajęcia zdalne na Teams",
       "instructor": "mgr Sylwia Pradel",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "57c4c0a110b7101a7edf",
+      "id": "a8e469c08a6c5b3226c5",
       "date": "2026-11-12",
       "startTime": "10:00",
       "endTime": "11:30",
       "title": "Język angielski",
       "type": "exercise",
       "group": "5 angNow C1/3/ZS",
-      "room": "F Dublin",
+      "room": "F Zajęcia zdalne na Teams",
       "instructor": "mgr Aneta Nowińska",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
