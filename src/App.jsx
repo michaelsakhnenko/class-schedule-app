@@ -21,7 +21,6 @@ import {
   addDays,
   classCountLabel,
   currentWarsawTime,
-  formatDateRange,
   formatFullDate,
   formatMonth,
   formatShortDate,
@@ -1469,7 +1468,7 @@ export function App() {
   const classDates = useMemo(() => new Set(events.filter((event) => !isCancelled(event)).map((event) => event.date)), [events]);
   const visibleClasses = useMemo(() => events.filter((event) => isCalendarDay(event.date) && days.includes(event.date)), [events, days]);
   const displayedCount = (view === "month" ? monthlyClasses : visibleClasses).filter((event) => !isCancelled(event)).length;
-  const showToolbarDate = view === "week" || (view === "day" && !isMobile);
+  const showToolbarDate = view === "day" && !isMobile;
   const titleDay = view === "week" ? clampCalendarDay(startOfWeek(selectedDay)) : selectedDay;
   const [titleMonth, titleYear] = formatMonth(titleDay).split(" ");
   const canNavigate = (amount) => {
@@ -1544,7 +1543,7 @@ export function App() {
         <div className="calendar-toolbar">
           <div className="calendar-heading">
             <h1><strong>{titleMonth}</strong> <span>{titleYear}</span></h1>
-            <div className="range-label">{showToolbarDate && <><span className="range-long">{view === "week" ? formatDateRange(days.filter(isCalendarDay)) : formatFullDate(selectedDay)}</span><span className="range-short">{view === "week" ? formatDateRange(days.filter(isCalendarDay)) : formatShortDate(selectedDay)}</span> <i>·</i> </>}{displayedCount} {classCountLabel(displayedCount)}</div>
+            <div className="range-label">{showToolbarDate && <><span className="range-long">{formatFullDate(selectedDay)}</span><span className="range-short">{formatShortDate(selectedDay)}</span> <i>·</i> </>}{displayedCount} {classCountLabel(displayedCount)}</div>
           </div>
           {isMobile && <div className="mobile-header-actions">
             <SyncStatusButton syncDetails={syncDetails} onOpenStatus={loadSyncHistory} popoverId="mobile-sync-popover" />
