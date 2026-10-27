@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { reconcileSchedule } from "./reconcile-schedule.mjs";
+import { applyScheduleOverrides } from "./schedule-overrides.mjs";
 
 const PLAN_ID = "1000";
 const SOURCE_URL = `https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/${PLAN_ID}`;
@@ -179,7 +180,7 @@ async function main() {
       await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
     }
   }
-  const events = reconcileSchedule(previous?.events ?? [], imported, start, end);
+  const events = reconcileSchedule(previous?.events ?? [], applyScheduleOverrides(imported), start, end);
   const sameEvents = JSON.stringify(previous?.events) === JSON.stringify(events);
   const sameRange = previous?.sourceRange?.start === start && previous?.sourceRange?.end === end;
   const checkedAt = new Date().toISOString();

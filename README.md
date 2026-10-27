@@ -25,7 +25,7 @@ Dates and times are local to `Europe/Warsaw`. The verified source forms for the 
 
 On 3 October 2026, selecting **Cały semestr** and **Szukaj** on plan 1000 loaded 146 rows for 1 October 2026–21 February 2027. The site sends a DevExpress `POST` to `/Plany/PlanyTokowGridCustom/1000`; the rendered `#gridViewPlanyTokow_DXMainTable` contains the date groups and all fields needed by `ClassEvent`. The CSV link still targeted the current day after the full-semester search and its output omitted the class form and instructor. A direct iCal request returned an error page.
 
-`npm run sync:schedule` runs the Playwright importer, validates the full-semester grid, and atomically updates `public/schedule.json` only when the timetable changes. It retains events outside the newly fetched semester and leaves the last valid file intact if the source fails. Install the browser once with `npx playwright install chromium`.
+`npm run sync:schedule` runs the Playwright importer, validates the full-semester grid, applies narrowly scoped manual corrections from `scripts/schedule-overrides.mjs`, and atomically updates `public/schedule.json` only when the timetable changes. It retains events outside the newly fetched semester and leaves the last valid file intact if the source fails. Install the browser once with `npx playwright install chromium`. The 28 October 2026 MS Dynamics exercise is locally corrected from 15:15–16:45 to 11:45–13:15; the source seminar on that day stays unchanged.
 
 ## GitHub Pages
 
