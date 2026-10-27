@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-10-21T11:46:04.531Z",
+  "publishedAt": "2026-10-27T12:58:08.915Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -597,7 +597,7 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "5711e93d07af8d4710ef",
+      "id": "a1661994cae621769382",
       "date": "2026-10-28",
       "startTime": "11:45",
       "endTime": "13:15",
