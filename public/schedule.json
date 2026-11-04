@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-10-27T12:58:08.915Z",
+  "publishedAt": "2026-11-04T15:46:29.219Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -854,7 +854,8 @@
       "room": "F San Diego",
       "instructor": "prof. IDEIS dr inż. Zbigniew Handzel",
       "notes": "",
-      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000",
+      "status": "cancelled"
     },
     {
       "id": "044c8dababb0f8a1f43a",
@@ -1867,6 +1868,19 @@
       "group": "cw/3/ZS",
       "room": "F Berlin",
       "instructor": "prof. IDEIS dr hab. Tomasz Czapran",
+      "notes": "",
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+    },
+    {
+      "id": "4d3a5d26bde974d6548c",
+      "date": "2027-01-19",
+      "startTime": "11:45",
+      "endTime": "14:45",
+      "title": "Metodyka opracowania dokumentacji projektowej",
+      "type": "exercise",
+      "group": "cw/3/ZS",
+      "room": "F San Diego",
+      "instructor": "prof. IDEIS dr inż. Zbigniew Handzel",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
