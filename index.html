@@ -4,16 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#151515" />
+    <meta name="apple-mobile-web-app-title" content="Plan Zajęć" />
+    <link id="app-favicon" rel="icon" type="image/svg+xml" href="./icons/icon-dark.svg" />
+    <link id="app-touch-icon" rel="apple-touch-icon" sizes="180x180" href="./icons/home-dark.png" />
     <script>
       try {
-        document.documentElement.dataset.theme = localStorage.getItem("class-schedule-theme") === "light" ? "light" : "dark";
+        const theme = localStorage.getItem("class-schedule-theme") === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+        document.getElementById("app-favicon").href = `./icons/icon-${theme}.svg`;
+        document.getElementById("app-touch-icon").href = `./icons/home-${theme}.png`;
       } catch {
         document.documentElement.dataset.theme = "dark";
       }
     </script>
-    <link rel="icon" href="data:," />
     <meta name="description" content="Przejrzysty plan zajęć dla studentów zarządzania." />
-    <title>Kalendarz zajęć</title>
+    <title>Plan Zajęć</title>
   </head>
   <body>
     <div id="root"></div>
