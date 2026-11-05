@@ -14,6 +14,7 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 - Limit calendar navigation to 1 October 2026 through 31 August 2027 in every view and at every screen size. Keep the full boundary weeks' grid geometry, but leave dates outside that range blank and unavailable. This browsing range is independent of the source timetable snapshot's current end date.
 - The selected reference is the user's dark Apple Calendar screenshot. Keep a calm, compact dark calendar layout with a desktop week view and mobile day view by default.
 - The primary accent is `#FFAE00`; use it sparingly for selected dates and key navigation emphasis.
+- Keep the home-screen calendar icon's inner top corners rounded in both light and dark assets. Use a continuous filled outline so rasterizing the icon does not introduce stray seam lines.
 - Give Wykład, Ćwiczenia, and Konwersatorium distinct event colors. The source plan's "Forma zaj." column for 1 Oct 2026–21 Feb 2027 contains Wyk, Cw, and Konw; English classes are marked Cw. Lektorat was an invented demo category and should not appear unless a later source timetable actually uses it.
 - Do not show class-type legends in the sidebar or calendar canvas. Keep an "Inne" color for an unmapped rare source form and preserve its original label in event details.
 - Show class-type labels in normal Polish capitalization in event details. Keep them off event cards.

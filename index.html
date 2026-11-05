@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#151515" />
     <meta name="apple-mobile-web-app-title" content="Plan Zajęć" />
     <link id="app-favicon" rel="icon" type="image/svg+xml" href="./icons/calendar-dark.svg" />
-    <link id="app-touch-icon" rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-dark.png" />
+    <link id="app-touch-icon" rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-dark-rounded.png" />
     <script>
       let theme = "dark";
       try {
@@ -16,7 +16,7 @@
       document.getElementById("app-favicon").href = `./icons/calendar-${theme}.svg`;
       const systemLight = window.matchMedia("(prefers-color-scheme: light)");
       const updateHomeIcon = () => {
-        document.getElementById("app-touch-icon").href = `./icons/apple-touch-${systemLight.matches ? "light" : "dark"}.png`;
+        document.getElementById("app-touch-icon").href = `./icons/apple-touch-${systemLight.matches ? "light" : "dark"}-rounded.png`;
       };
       updateHomeIcon();
       systemLight.addEventListener("change", updateHomeIcon);
