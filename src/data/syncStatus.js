@@ -1,6 +1,6 @@
 const WORKFLOW_API = "https://api.github.com/repos/michaelsakhnenko/class-schedule-app/actions/workflows/sync-schedule.yml/runs?per_page=30";
 const PUBLISHED_HEARTBEAT = "https://michaelsakhnenko.github.io/class-schedule-app/sync-status.json";
-const DELAY_MS = 95 * 60 * 1000;
+const DELAY_MS = 24 * 60 * 60 * 1000;
 
 export async function getSyncHeartbeat() {
   const localPreview = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
@@ -29,12 +29,13 @@ export function assessSyncStatus(heartbeat, latestRun, now = Date.now()) {
   if (!heartbeat) return "unknown";
   const checkedAt = Date.parse(heartbeat.checkedAt);
   if (!Number.isFinite(checkedAt)) return "unknown";
+  const overdue = now - checkedAt > DELAY_MS;
   const runStarted = Date.parse(latestRun?.created_at);
   if (Number.isFinite(runStarted) && runStarted > checkedAt) {
-    if (latestRun.conclusion === "failure" || latestRun.conclusion === "cancelled" || latestRun.conclusion === "timed_out") return "failed";
-    if (latestRun.status !== "completed") return "running";
+    if (latestRun.conclusion === "failure" || latestRun.conclusion === "cancelled" || latestRun.conclusion === "timed_out") return overdue ? "failed" : "retrying";
+    if (latestRun.status !== "completed" && !overdue) return "running";
   }
-  return now - checkedAt > DELAY_MS ? "delayed" : "current";
+  return overdue ? "delayed" : "current";
 }
 
 export function formatSyncTime(value) {

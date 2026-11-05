@@ -168,13 +168,13 @@ function MiniCalendar({ month, selectedDay, classDates, onSelect, onMonthChange 
   );
 }
 
-function GroupFilter({ groups, value, onChange, id }) {
+function GroupFilter({ groups, value, onChange, id, descriptionId }) {
   if (!groups.length) return null;
   return (
     <label className="group-filter" htmlFor={id}>
       <span>Grupa angielskiego</span>
       <span className="group-filter-control">
-        <select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
+        <select id={id} value={value} aria-describedby={descriptionId} onChange={(event) => onChange(event.target.value)}>
           <option value="">Wszystkie grupy</option>
           {groups.map((group) => <option key={group} value={group}>{formatLanguageGroup(group)}</option>)}
         </select>
@@ -189,6 +189,7 @@ function SyncStatusDetails({ heartbeat, latestRun, historyLoading, historyError,
     current: "Sprawdzono niedawno",
     delayed: "Sprawdzenie opóźnione",
     failed: "Ostatnia próba nieudana",
+    retrying: "Ostatnia próba nieudana",
     running: "Sprawdzanie trwa",
     unknown: "Status niedostępny",
   }[health];
@@ -201,7 +202,7 @@ function SyncStatusDetails({ heartbeat, latestRun, historyLoading, historyError,
         <div><dt>Ostatnia zmiana planu</dt><dd>{formatSyncTime(heartbeat?.changedAt)}</dd></div>
         {latestRun && latestRun.created_at > (heartbeat?.checkedAt ?? "") && <div><dt>Ostatnia próba</dt><dd>{formatSyncTime(latestRun.created_at)}</dd></div>}
       </dl>
-      {health === "delayed" && <p>Nie było udanego sprawdzenia od ponad 95 minut.</p>}
+      {health === "delayed" && <p>Nie było udanego sprawdzenia od ponad 24 godzin.</p>}
       {health === "failed" && <p>Plan może być nieaktualny. Ostatnia próba synchronizacji zakończyła się błędem.</p>}
       {historyLoading && <p>Sprawdzanie ostatniej próby…</p>}
       {historyError && <p>Nie można sprawdzić ostatniej próby.</p>}
@@ -254,7 +255,10 @@ function MobileSettings({ groups, value, onGroupChange, theme, onThemeChange }) 
       </button>
       {open && (
         <div className="mobile-settings-popover" id="mobile-settings-popover">
-          {groups.length > 0 && <GroupFilter groups={groups} value={value} onChange={chooseGroup} id="mobile-language-group" />}
+          {groups.length > 0 && <div className={`mobile-group-selection${!value ? " is-unset" : ""}`}>
+            <GroupFilter groups={groups} value={value} onChange={chooseGroup} id="mobile-language-group" descriptionId={!value ? "mobile-group-hint" : undefined} />
+            {!value && <p className="mobile-group-hint" id="mobile-group-hint">Wybierz swoją grupę, by widzieć tylko swoje zajęcia z angielskiego.</p>}
+          </div>}
           <div className="mobile-settings-theme">
             <span>Wygląd</span>
             <button
