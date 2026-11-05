@@ -1398,8 +1398,7 @@ export function App() {
     try { window.localStorage.setItem("class-schedule-theme", theme); } catch { /* Storage can be unavailable. */ }
     document.documentElement.dataset.theme = theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#151515" : "#faf9f7");
-    document.getElementById("app-favicon")?.setAttribute("href", `./icons/icon-${theme}.svg`);
-    document.getElementById("app-touch-icon")?.setAttribute("href", `./icons/home-${theme}.png`);
+    document.getElementById("app-favicon")?.setAttribute("href", `./icons/calendar-${theme}.svg`);
   }, [theme]);
 
   useEffect(() => {
