@@ -31,5 +31,11 @@ test("the next sync keeps the corrected snapshot without duplicating the class",
   const sourceEvents = snapshot.events.map((event) => event.id === target.id ? { ...event, startTime: "15:15", endTime: "16:45" } : event);
   const result = reconcileSchedule(snapshot.events, applyScheduleOverrides(sourceEvents), snapshot.sourceRange.start, snapshot.sourceRange.end);
   assert.deepEqual(result, snapshot.events);
-  assert.equal(snapshot.events.find((event) => event.id === target.id)?.startTime, "11:45");
+  const corrected = snapshot.events.filter((event) =>
+    event.date === target.date && event.title === target.title &&
+    event.type === target.type && event.group === target.group
+  );
+  assert.equal(corrected.length, 1);
+  assert.equal(corrected[0].startTime, "11:45");
+  assert.equal(corrected[0].endTime, "13:15");
 });
