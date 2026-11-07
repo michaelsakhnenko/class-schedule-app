@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-11-04T15:46:29.219Z",
+  "publishedAt": "2026-11-07T20:30:37.818Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -858,27 +858,27 @@
       "status": "cancelled"
     },
     {
-      "id": "044c8dababb0f8a1f43a",
+      "id": "035462797bb752ac747e",
       "date": "2026-11-10",
       "startTime": "15:15",
       "endTime": "16:45",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "seminar",
       "group": "konw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Zajęcia zdalne na Teams",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "962185f4139287c0004a",
+      "id": "e3446ec641010e072fff",
       "date": "2026-11-10",
       "startTime": "17:00",
       "endTime": "18:30",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Zajęcia zdalne na Teams",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
