@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-11-17T11:10:16.195Z",
+  "publishedAt": "2026-11-17T19:50:32.308Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -1014,14 +1014,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "67b918606fba8d480b31",
+      "id": "06e76abe4d513fe18807",
       "date": "2026-11-18",
       "startTime": "17:00",
       "endTime": "18:30",
       "title": "Metody i techniki sprzedaży",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Mateusz Gajda",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1118,27 +1118,27 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "ceb36a712a5c4f29bd57",
+      "id": "d6bf42d3e6fd1cd3a86e",
       "date": "2026-11-24",
       "startTime": "15:15",
       "endTime": "16:45",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "seminar",
       "group": "konw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "e61613f998ccfe874a2e",
+      "id": "5e8807a27ea48f6f8123",
       "date": "2026-11-24",
       "startTime": "17:00",
       "endTime": "18:30",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1157,14 +1157,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "218ead9bf792d62eb3fd",
+      "id": "e2f9eb4b36253ccb808f",
       "date": "2026-11-25",
       "startTime": "16:45",
       "endTime": "18:15",
       "title": "Metody i techniki sprzedaży",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Mateusz Gajda",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1287,14 +1287,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "6534d37279f3f52ed164",
+      "id": "86c0899abb65ae62c069",
       "date": "2026-12-02",
       "startTime": "16:45",
       "endTime": "18:15",
       "title": "Metody i techniki sprzedaży",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Mateusz Gajda",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1404,27 +1404,27 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "e7ba76eaaf067653789e",
+      "id": "e4d28ceaf66bfbd92bb4",
       "date": "2026-12-08",
       "startTime": "15:15",
       "endTime": "16:45",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "seminar",
       "group": "konw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "971588531304a2791354",
+      "id": "fb920693cafd7851b8f7",
       "date": "2026-12-08",
       "startTime": "17:00",
       "endTime": "18:30",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1456,14 +1456,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "83da920c956fa5729f6d",
+      "id": "83fadae6fc727f44d2aa",
       "date": "2026-12-09",
       "startTime": "16:45",
       "endTime": "19:00",
       "title": "Metody i techniki sprzedaży",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Mateusz Gajda",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1547,14 +1547,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "a66d9b5d73b19d1598ee",
+      "id": "30a10fd217366247af44",
       "date": "2026-12-15",
       "startTime": "15:15",
       "endTime": "18:15",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1573,14 +1573,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "a7b56afdda32fe46f0a9",
+      "id": "e1e72ad8c7a1e21d877d",
       "date": "2026-12-16",
       "startTime": "16:45",
       "endTime": "19:00",
       "title": "Metody i techniki sprzedaży",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Mateusz Gajda",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1742,27 +1742,27 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "8215a1d238ae867b3b3a",
+      "id": "00957ddef841c5392040",
       "date": "2027-01-12",
       "startTime": "15:15",
       "endTime": "16:45",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "seminar",
       "group": "konw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "d40f91d97885f1fa9bf5",
+      "id": "daaa88115afe68416dbb",
       "date": "2027-01-12",
       "startTime": "17:00",
       "endTime": "18:30",
       "title": "Zarządzanie w ochronie środowiska",
       "type": "exercise",
       "group": "cw/3/ZS",
-      "room": "F San Diego",
+      "room": "F Warszawa",
       "instructor": "dr Wojciech Blecharczyk",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
