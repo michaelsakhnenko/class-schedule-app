@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-11-07T20:30:37.818Z",
+  "publishedAt": "2026-11-17T11:10:16.195Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -1040,14 +1040,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "8bef2a714e40cdcda58a",
+      "id": "63f5ea98bbf079465372",
       "date": "2026-11-19",
       "startTime": "08:15",
       "endTime": "09:45",
       "title": "Język angielski",
       "type": "exercise",
       "group": "4 angNow B2+/3/ZS",
-      "room": "F Dublin",
+      "room": "F Los Angeles",
       "instructor": "mgr Aneta Nowińska",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
@@ -1066,14 +1066,14 @@
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
     {
-      "id": "8241fe0085ef99d98e5a",
+      "id": "542d00fbf12edeae9e62",
       "date": "2026-11-19",
       "startTime": "10:00",
       "endTime": "11:30",
       "title": "Język angielski",
       "type": "exercise",
       "group": "5 angNow C1/3/ZS",
-      "room": "F Dublin",
+      "room": "F Los Angeles",
       "instructor": "mgr Aneta Nowińska",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
