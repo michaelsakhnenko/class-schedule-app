@@ -5,7 +5,7 @@
     "start": "2026-10-01",
     "end": "2027-02-21"
   },
-  "publishedAt": "2026-11-17T19:50:32.308Z",
+  "publishedAt": "2026-11-19T23:50:17.911Z",
   "events": [
     {
       "id": "6274df0c7b49726e888c",
@@ -1154,7 +1154,8 @@
       "room": "F Los Angeles",
       "instructor": "prof. IDEIS dr hab. Tomasz Czapran",
       "notes": "",
-      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000",
+      "status": "cancelled"
     },
     {
       "id": "e2f9eb4b36253ccb808f",
@@ -1881,6 +1882,19 @@
       "group": "cw/3/ZS",
       "room": "F San Diego",
       "instructor": "prof. IDEIS dr inż. Zbigniew Handzel",
+      "notes": "",
+      "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
+    },
+    {
+      "id": "ea407a4fe7966b3c763f",
+      "date": "2027-01-20",
+      "startTime": "13:30",
+      "endTime": "15:00",
+      "title": "Zarządzanie sprzedażą z MS Dynamics",
+      "type": "seminar",
+      "group": "konw/3/ZS",
+      "room": "F Los Angeles",
+      "instructor": "prof. IDEIS dr hab. Tomasz Czapran",
       "notes": "",
       "sourceUrl": "https://harmonogram.krakow.ideis.pl/Plany/PlanyTokow/1000"
     },
